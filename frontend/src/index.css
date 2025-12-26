@@ -1,88 +1,191 @@
-/* Global Styles for Salesforce Schema Viewer */
+@import 'tailwindcss';
 
-* {
-  box-sizing: border-box;
-}
+/* Salesforce Schema Viewer - Tailwind v4 Theme */
 
-:root {
+@theme {
   /* Salesforce-inspired color palette */
-  --sf-blue: #0070d2;
-  --sf-blue-dark: #005fb2;
-  --sf-blue-light: #1b96ff;
-  --sf-purple: #9050e9;
-  --sf-purple-dark: #7b3dd4;
-  --sf-text: #181818;
-  --sf-text-muted: #706e6b;
-  --sf-border: #d8d8d8;
-  --sf-background: #f4f6f9;
-  --sf-white: #ffffff;
-  --sf-error: #c23934;
-  --sf-success: #04844b;
+  --color-sf-blue: #0070d2;
+  --color-sf-blue-dark: #005fb2;
+  --color-sf-blue-light: #1b96ff;
+  --color-sf-purple: #9050e9;
+  --color-sf-purple-dark: #7b3dd4;
+  --color-sf-purple-light: #f3e8ff;
+  --color-sf-text: #181818;
+  --color-sf-text-muted: #706e6b;
+  --color-sf-border: #d8d8d8;
+  --color-sf-background: #f4f6f9;
+  --color-sf-error: #c23934;
+  --color-sf-success: #04844b;
 
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  font-weight: 400;
-  color: var(--sf-text);
-  background-color: var(--sf-background);
+  /* shadcn/ui compatible colors */
+  --color-background: #f4f6f9;
+  --color-foreground: #181818;
+  --color-card: #ffffff;
+  --color-card-foreground: #181818;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #181818;
+  --color-primary: #0070d2;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #9050e9;
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #f4f6f9;
+  --color-muted-foreground: #706e6b;
+  --color-accent: #e5f1ff;
+  --color-accent-foreground: #0070d2;
+  --color-destructive: #c23934;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #d8d8d8;
+  --color-input: #d8d8d8;
+  --color-ring: #0070d2;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* Animations */
+  --animate-spin: spin 1s linear infinite;
 }
 
-html,
-body,
-#root {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* Reset */
-h1, h2, h3, h4, h5, h6 {
-  margin: 0;
-  font-weight: 600;
+/* Base layer */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    @apply m-0 p-0 w-full h-full overflow-hidden;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans text-sm antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+  }
 }
 
-p {
-  margin: 0;
+/* Custom utilities */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-sf-background;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
 }
 
-button {
-  font-family: inherit;
-  font-size: inherit;
-}
+/* React Flow overrides */
+@layer components {
+  .react-flow__minimap {
+    @apply border border-sf-border rounded-lg overflow-hidden shadow-sm;
+  }
 
-input, select {
-  font-family: inherit;
-  font-size: inherit;
-}
+  .react-flow__controls {
+    @apply border border-sf-border rounded-lg overflow-hidden shadow-sm;
+  }
 
-/* Focus styles */
-:focus-visible {
-  outline: 2px solid var(--sf-blue);
-  outline-offset: 2px;
-}
+  .react-flow__controls-button {
+    @apply border-b border-gray-200 bg-white;
+  }
 
-/* Scrollbar styles */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+  .react-flow__controls-button:hover {
+    @apply bg-blue-50;
+  }
 
-::-webkit-scrollbar-track {
-  background: var(--sf-background);
-}
+  .react-flow__controls-button:last-child {
+    @apply border-b-0;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: #c9c7c5;
-  border-radius: 4px;
-}
+  /* Relationship Edge Styles */
+  .relationship-edge {
+    fill: none;
+    stroke-width: 2;
+    transition: stroke-width 0.2s ease;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #969492;
+  .relationship-edge.lookup {
+    stroke: #0176D3;
+    stroke-dasharray: 6 3;
+  }
+
+  .relationship-edge.master-detail {
+    stroke: #9050E9;
+    stroke-dasharray: none;
+  }
+
+  .relationship-edge.selected {
+    stroke-width: 3;
+  }
+
+  /* Edge Labels */
+  .edge-label {
+    position: absolute;
+    pointer-events: all;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+  }
+
+  .edge-label.lookup {
+    background: #E8F4FF;
+    color: #0176D3;
+    border: 1px solid #0176D3;
+  }
+
+  .edge-label.master-detail {
+    background: #F3E8FF;
+    color: #9050E9;
+    border: 1px solid #9050E9;
+  }
+
+  .edge-label.selected {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transform: scale(1.05);
+  }
+
+  .edge-label .field-name {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  /* Cardinality Labels */
+  .cardinality-label {
+    position: absolute;
+    pointer-events: none;
+    font-size: 10px;
+    font-weight: 700;
+    color: #706E6B;
+    background: white;
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px solid #D8D8D8;
+  }
 }

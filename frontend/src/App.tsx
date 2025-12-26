@@ -8,7 +8,6 @@ import { Layout } from './components/layout';
 import { ObjectPicker } from './components/sidebar';
 import { SchemaFlow } from './components/flow';
 import { useAppStore } from './store';
-import './App.css';
 
 function App() {
   const { checkAuth, loadObjects, authStatus } = useAppStore();

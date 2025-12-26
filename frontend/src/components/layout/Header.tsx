@@ -2,9 +2,10 @@
  * Application header with authentication controls.
  */
 
+import { BarChart3, LogIn, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useAppStore } from '../../store';
 import { api } from '../../api/client';
-import './Header.css';
 
 export default function Header() {
   const { authStatus, isLoadingAuth, logout } = useAppStore();
@@ -18,29 +19,31 @@ export default function Header() {
   };
 
   return (
-    <header className="app-header">
-      <div className="header-left">
-        <span className="app-logo">📊</span>
-        <h1 className="app-title">SF Schema Viewer</h1>
+    <header className="h-14 bg-gradient-to-br from-[#032d60] to-sf-blue text-white flex items-center justify-between px-5 shadow-md">
+      <div className="flex items-center gap-3">
+        <BarChart3 className="h-6 w-6" />
+        <h1 className="text-lg font-semibold tracking-tight">SF Schema Viewer</h1>
       </div>
 
-      <div className="header-right">
+      <div className="flex items-center">
         {isLoadingAuth ? (
-          <span className="loading-text">Loading...</span>
+          <span className="text-white/80 text-sm">Loading...</span>
         ) : authStatus?.is_authenticated ? (
-          <div className="user-info">
-            <div className="user-details">
-              <span className="user-name">{authStatus.user?.display_name}</span>
-              <span className="user-org">{authStatus.user?.org_id}</span>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <span className="block text-sm font-medium">{authStatus.user?.display_name}</span>
+              <span className="block text-xs opacity-80">{authStatus.user?.org_id}</span>
             </div>
-            <button onClick={handleLogout} className="logout-btn">
+            <Button variant="sfGhost" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
               Logout
-            </button>
+            </Button>
           </div>
         ) : (
-          <button onClick={handleLogin} className="login-btn">
-            🔐 Connect to Salesforce
-          </button>
+          <Button variant="sfPrimary" onClick={handleLogin}>
+            <LogIn className="h-4 w-4 mr-2" />
+            Connect to Salesforce
+          </Button>
         )}
       </div>
     </header>

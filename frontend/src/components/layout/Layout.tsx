@@ -4,7 +4,6 @@
 
 import type { ReactNode } from 'react';
 import Header from './Header';
-import './Layout.css';
 
 interface LayoutProps {
   sidebar: ReactNode;
@@ -13,11 +12,11 @@ interface LayoutProps {
 
 export default function Layout({ sidebar, children }: LayoutProps) {
   return (
-    <div className="app-layout">
+    <div className="w-screen h-screen flex flex-col overflow-hidden">
       <Header />
-      <div className="app-content">
-        <aside className="app-sidebar">{sidebar}</aside>
-        <main className="app-main">{children}</main>
+      <div className="flex-1 flex overflow-hidden">
+        <aside className="shrink-0 h-full">{sidebar}</aside>
+        <main className="flex-1 h-full overflow-hidden bg-sf-background">{children}</main>
       </div>
     </div>
   );

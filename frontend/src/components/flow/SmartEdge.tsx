@@ -12,7 +12,6 @@ import {
   type EdgeProps,
   Position,
 } from '@xyflow/react';
-import './RelationshipEdge.css';
 
 // Edge data type
 export interface SmartEdgeData {

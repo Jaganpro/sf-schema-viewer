@@ -4,7 +4,6 @@
 
 import { memo } from 'react';
 import { getBezierPath, EdgeLabelRenderer, Position, type Edge } from '@xyflow/react';
-import './RelationshipEdge.css';
 
 // Define the edge data type with index signature for React Flow compatibility
 export interface RelationshipEdgeData {

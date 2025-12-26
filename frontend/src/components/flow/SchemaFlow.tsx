@@ -14,13 +14,21 @@ import {
   Panel,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import {
+  BarChart3,
+  ClipboardList,
+  LayoutGrid,
+  RefreshCcw,
+  Focus,
+  Loader2,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 import ObjectNode from './ObjectNode';
 import type { ObjectNodeData } from './ObjectNode';
 import SmartEdge from './SmartEdge';
 import { EdgeMarkerDefs } from './RelationshipEdge';
 import { useAppStore } from '../../store';
-import './SchemaFlow.css';
 
 // Register custom node and edge types
 const nodeTypes = {
@@ -135,7 +143,7 @@ export default function SchemaFlow() {
   }, [applyLayout]);
 
   return (
-    <div className="schema-flow-container">
+    <div className="w-full h-full relative bg-sf-background">
       <EdgeMarkerDefs />
       <ReactFlow
         nodes={nodes}
@@ -162,75 +170,111 @@ export default function SchemaFlow() {
         />
 
         {/* Control Panel */}
-        <Panel position="top-right" className="flow-panel">
+        <Panel position="top-right" className="flex gap-2">
           <button
             onClick={() => setCompactMode(!compactMode)}
-            className={`panel-button ${compactMode ? 'active' : ''}`}
+            className={cn(
+              'bg-white border border-gray-300 rounded-md px-3.5 py-2 text-[13px] font-medium cursor-pointer flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]',
+              compactMode
+                ? 'bg-sf-blue border-sf-blue text-white hover:bg-sf-blue-dark'
+                : 'text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue'
+            )}
             title={compactMode ? 'Show fields' : 'Hide fields (compact mode)'}
           >
-            {compactMode ? '📋 Show Fields' : '🔲 Compact'}
+            {compactMode ? (
+              <>
+                <ClipboardList className="h-4 w-4" />
+                Show Fields
+              </>
+            ) : (
+              <>
+                <LayoutGrid className="h-4 w-4" />
+                Compact
+              </>
+            )}
           </button>
-          <button onClick={handleReLayout} className="panel-button" title="Re-apply auto-layout">
-            🔄 Auto Layout
+          <button
+            onClick={handleReLayout}
+            className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-[13px] font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
+            title="Re-apply auto-layout"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            Auto Layout
           </button>
           <button
             onClick={() => fitView({ padding: 0.2, duration: 300 })}
-            className="panel-button"
+            className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-[13px] font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
             title="Fit all nodes in view"
           >
-            🎯 Fit View
+            <Focus className="h-4 w-4" />
+            Fit View
           </button>
         </Panel>
 
         {/* Empty state */}
         {nodes.length === 0 && !isLoadingDescribe && (
-          <Panel position="top-center" className="empty-state">
-            <div className="empty-content">
-              <span className="empty-icon">📊</span>
-              <h3>No Objects Selected</h3>
-              <p>Select objects from the sidebar to visualize their schema</p>
+          <Panel position="top-center" className="pointer-events-none">
+            <div className="bg-white border border-gray-300 rounded-xl px-12 py-8 text-center shadow-sm">
+              <BarChart3 className="h-12 w-12 mx-auto mb-4 text-sf-blue" />
+              <h3 className="m-0 mb-2 text-sf-text text-lg font-semibold">No Objects Selected</h3>
+              <p className="m-0 text-sf-text-muted text-sm">
+                Select objects from the sidebar to visualize their schema
+              </p>
             </div>
           </Panel>
         )}
 
         {/* Loading state */}
         {isLoadingDescribe && (
-          <Panel position="top-center" className="loading-state">
-            <div className="loading-content">
-              <span className="loading-spinner">⏳</span>
+          <Panel position="top-center" className="pointer-events-none">
+            <div className="bg-white border border-gray-300 rounded-lg px-6 py-3 flex items-center gap-3 shadow-sm text-sm text-sf-text">
+              <Loader2 className="h-4 w-4 animate-spin" />
               <span>Loading schema...</span>
             </div>
           </Panel>
         )}
 
         {/* Legend */}
-        <Panel position="bottom-right" className="legend-panel">
-          <div className="legend">
-            <h4>Legend</h4>
-            <div className="legend-item">
-              <span className="legend-line lookup"></span>
+        <Panel position="bottom-right">
+          <div className="bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-sm">
+            <h4 className="m-0 mb-3 text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold">
+              Legend
+            </h4>
+            <div className="flex items-center gap-2.5 mb-2 text-xs text-sf-text">
+              <span
+                className="w-7 h-0.5"
+                style={{
+                  background: 'repeating-linear-gradient(90deg, #0176D3 0px, #0176D3 5px, transparent 5px, transparent 9px)',
+                }}
+              />
               <span>Lookup Relationship</span>
             </div>
-            <div className="legend-item">
-              <span className="legend-line master-detail"></span>
+            <div className="flex items-center gap-2.5 mb-2 text-xs text-sf-text">
+              <span className="w-7 h-0.5 bg-sf-purple" />
               <span>Master-Detail Relationship</span>
             </div>
-            <div className="legend-item">
-              <span className="legend-badge standard">S</span>
+            <div className="flex items-center gap-2.5 mb-2 text-xs text-sf-text">
+              <span className="w-[18px] h-[18px] rounded bg-sf-blue flex items-center justify-center text-[10px] font-bold text-white">
+                S
+              </span>
               <span>Standard Object</span>
             </div>
-            <div className="legend-item">
-              <span className="legend-badge custom">C</span>
+            <div className="flex items-center gap-2.5 text-xs text-sf-text">
+              <span className="w-[18px] h-[18px] rounded bg-sf-purple flex items-center justify-center text-[10px] font-bold text-white">
+                C
+              </span>
               <span>Custom Object</span>
             </div>
           </div>
         </Panel>
 
         {/* Stats */}
-        <Panel position="bottom-left" className="stats-panel">
-          <span>{selectedObjectNames.length} objects</span>
-          <span>•</span>
-          <span>{edges.length} relationships</span>
+        <Panel position="bottom-left">
+          <div className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-xs text-sf-text-muted flex gap-2.5 shadow-sm font-medium">
+            <span>{selectedObjectNames.length} objects</span>
+            <span>•</span>
+            <span>{edges.length} relationships</span>
+          </div>
         </Panel>
       </ReactFlow>
     </div>

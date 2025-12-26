@@ -3,9 +3,22 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, X, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { useAppStore } from '../../store';
 import type { ObjectBasicInfo } from '../../types/schema';
-import './ObjectPicker.css';
 
 interface ObjectItemProps {
   object: ObjectBasicInfo;
@@ -16,20 +29,22 @@ interface ObjectItemProps {
 function ObjectItem({ object, isSelected, onToggle }: ObjectItemProps) {
   return (
     <div
-      className={`object-item ${isSelected ? 'selected' : ''}`}
+      className={cn(
+        'flex items-center gap-2.5 px-4 py-2 cursor-pointer hover:bg-sf-background transition-colors',
+        isSelected && 'bg-blue-50'
+      )}
       onClick={onToggle}
     >
-      <input
-        type="checkbox"
+      <Checkbox
         checked={isSelected}
-        onChange={onToggle}
+        onCheckedChange={() => onToggle()}
         onClick={(e) => e.stopPropagation()}
       />
-      <div className="object-info">
-        <span className="object-label">{object.label}</span>
-        <span className="object-api-name">{object.name}</span>
+      <div className="flex-1 overflow-hidden flex flex-col gap-0.5">
+        <span className="text-[13px] text-sf-text truncate">{object.label}</span>
+        <span className="text-[11px] text-sf-text-muted truncate">{object.name}</span>
       </div>
-      {object.custom && <span className="custom-indicator">Custom</span>}
+      {object.custom && <Badge variant="custom">Custom</Badge>}
     </div>
   );
 }
@@ -54,24 +69,20 @@ export default function ObjectPicker() {
 
   const [localSearch, setLocalSearch] = useState(searchTerm);
 
-  // Debounced search
   const handleSearchChange = useCallback((value: string) => {
     setLocalSearch(value);
     setSearchTerm(value);
   }, [setSearchTerm]);
 
-  // Filter objects based on search and namespace filter
   const filteredObjects = useMemo(() => {
     let filtered = availableObjects;
 
-    // Apply namespace filter
     if (namespaceFilter === 'standard') {
       filtered = filtered.filter((obj) => !obj.custom);
     } else if (namespaceFilter === 'custom') {
       filtered = filtered.filter((obj) => obj.custom);
     }
 
-    // Apply search filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -81,7 +92,6 @@ export default function ObjectPicker() {
       );
     }
 
-    // Sort: selected first, then alphabetically
     const selectedSet = new Set(selectedObjectNames);
     return [...filtered].sort((a, b) => {
       const aSelected = selectedSet.has(a.name);
@@ -114,115 +124,142 @@ export default function ObjectPicker() {
 
   if (!sidebarOpen) {
     return (
-      <div className="sidebar collapsed">
-        <button className="toggle-btn" onClick={toggleSidebar} title="Open sidebar">
-          ▶
-        </button>
+      <div className="w-10 h-full bg-white border-r border-sf-border flex flex-col items-center pt-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={toggleSidebar}
+          title="Open sidebar"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="sidebar">
-      <div className="sidebar-header">
-        <h2>Objects</h2>
-        <button className="toggle-btn" onClick={toggleSidebar} title="Close sidebar">
-          ◀
-        </button>
+    <div className="w-[300px] h-full bg-white border-r border-sf-border flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h2 className="text-base font-semibold text-sf-text">Objects</h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={toggleSidebar}
+          title="Close sidebar"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
       </div>
 
       {!authStatus?.is_authenticated ? (
-        <div className="sidebar-empty">
+        <div className="py-8 px-4 text-center text-sf-text-muted text-sm">
           <p>Please log in to view objects</p>
         </div>
       ) : (
         <>
           {/* Search */}
-          <div className="search-container">
-            <input
+          <div className="px-4 py-3 relative">
+            <Input
               type="text"
               placeholder="Search objects..."
               value={localSearch}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="search-input"
+              className="pr-8"
             />
             {localSearch && (
               <button
-                className="clear-search"
+                className="absolute right-6 top-1/2 -translate-y-1/2 text-sf-text-muted hover:text-sf-text p-1"
                 onClick={() => handleSearchChange('')}
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
 
-          {/* Filters */}
-          <div className="filter-container">
-            <select
+          {/* Filter */}
+          <div className="px-4 pb-3">
+            <Select
               value={namespaceFilter}
-              onChange={(e) => setNamespaceFilter(e.target.value as 'all' | 'standard' | 'custom')}
-              className="filter-select"
+              onValueChange={(value) => setNamespaceFilter(value as 'all' | 'standard' | 'custom')}
             >
-              <option value="all">All Objects</option>
-              <option value="standard">Standard Only</option>
-              <option value="custom">Custom Only</option>
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="All Objects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Objects</SelectItem>
+                <SelectItem value="standard">Standard Only</SelectItem>
+                <SelectItem value="custom">Custom Only</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Actions */}
-          <div className="actions-container">
-            <button
+          <div className="px-4 pb-3 flex gap-2">
+            <Button
+              variant="sf"
+              size="sm"
+              className="flex-1 text-xs"
               onClick={handleSelectAll}
-              className="action-btn"
               disabled={filteredObjects.length === 0}
             >
               Select All ({filteredObjects.length})
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="sf"
+              size="sm"
+              className="flex-1 text-xs"
               onClick={handleClearAll}
-              className="action-btn"
               disabled={selectedObjectNames.length === 0}
             >
               Clear All
-            </button>
+            </Button>
           </div>
 
           {/* Selected count */}
           {selectedObjectNames.length > 0 && (
-            <div className="selected-count">
+            <div className="px-4 py-2 bg-blue-50 text-sf-blue text-[13px] font-medium">
               {selectedObjectNames.length} object{selectedObjectNames.length !== 1 ? 's' : ''} selected
             </div>
           )}
 
           {/* Object list */}
-          <div className="object-list">
-            {isLoadingObjects ? (
-              <div className="loading">Loading objects...</div>
-            ) : filteredObjects.length === 0 ? (
-              <div className="no-results">
-                {searchTerm ? 'No matching objects' : 'No objects available'}
-              </div>
-            ) : (
-              filteredObjects.map((obj) => (
-                <ObjectItem
-                  key={obj.name}
-                  object={obj}
-                  isSelected={selectedObjectNames.includes(obj.name)}
-                  onToggle={() => handleToggleObject(obj.name)}
-                />
-              ))
-            )}
-          </div>
+          <ScrollArea className="flex-1">
+            <div className="py-2">
+              {isLoadingObjects ? (
+                <div className="py-8 text-center text-sf-text-muted text-sm">
+                  Loading objects...
+                </div>
+              ) : filteredObjects.length === 0 ? (
+                <div className="py-8 text-center text-sf-text-muted text-sm">
+                  {searchTerm ? 'No matching objects' : 'No objects available'}
+                </div>
+              ) : (
+                filteredObjects.map((obj) => (
+                  <ObjectItem
+                    key={obj.name}
+                    object={obj}
+                    isSelected={selectedObjectNames.includes(obj.name)}
+                    onToggle={() => handleToggleObject(obj.name)}
+                  />
+                ))
+              )}
+            </div>
+          </ScrollArea>
 
-          {/* Refresh button */}
-          <div className="sidebar-footer">
-            <button
+          {/* Footer */}
+          <div className="px-4 py-3 border-t border-gray-200">
+            <Button
+              variant="sf"
+              className="w-full"
               onClick={loadObjects}
-              className="refresh-btn"
               disabled={isLoadingObjects}
             >
-              🔄 Refresh Objects
-            </button>
+              <RefreshCw className={cn('h-4 w-4 mr-2', isLoadingObjects && 'animate-spin')} />
+              Refresh Objects
+            </Button>
           </div>
         </>
       )}

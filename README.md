@@ -151,6 +151,8 @@ npm run dev
 | Layer | Technology |
 |-------|------------|
 | **Frontend** | React 18, TypeScript, Vite |
+| **Styling** | Tailwind CSS v4, shadcn/ui |
+| **Icons** | Lucide React |
 | **Visualization** | React Flow, Dagre |
 | **State** | Zustand |
 | **Backend** | FastAPI, Python 3.11+ |
@@ -177,13 +179,16 @@ sf-schema-viewer/
 ├── frontend/                # Vite + React + TypeScript
 │   └── src/
 │       ├── components/
+│       │   ├── ui/          # shadcn/ui components
 │       │   ├── flow/        # React Flow components
 │       │   │   ├── SchemaFlow.tsx
 │       │   │   ├── ObjectNode.tsx
 │       │   │   └── SmartEdge.tsx
+│       │   ├── layout/      # Layout components
 │       │   └── sidebar/     # Object picker
+│       ├── lib/             # Utilities (cn helper)
 │       ├── store/           # Zustand state
-│       ├── utils/           # Transformers, layout
+│       ├── utils/           # Transformers, layout, icons
 │       └── types/           # TypeScript definitions
 │
 ├── docs/                    # Documentation & screenshots
