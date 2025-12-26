@@ -16,9 +16,7 @@
   <a href="#tech-stack">Tech Stack</a>
 </p>
 
-<p align="center">
-  <img src="docs/screenshot.png" alt="Schema Viewer Screenshot" width="900">
-</p>
+<!-- Screenshot will be added here -->
 
 ---
 
@@ -40,7 +38,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/sf-schema-viewer.git
+git clone https://github.com/Jaganpro/sf-schema-viewer.git
 cd sf-schema-viewer
 
 # Copy environment template
@@ -69,10 +67,7 @@ Open http://localhost:5173 and click **Connect to Salesforce** 🎉
 
 ## 🔧 Setup
 
-### 1. Create a Salesforce Connected App
-
-<details>
-<summary><b>Option A: External Client App (Recommended)</b></summary>
+### 1. Create a Salesforce External Client App
 
 External Client Apps are Salesforce's newer, more secure OAuth approach (Summer '24+).
 
@@ -88,22 +83,6 @@ External Client Apps are Salesforce's newer, more secure OAuth approach (Summer 
      - `Perform requests at any time (refresh_token)`
 5. Save and wait ~10 minutes for propagation
 6. Copy the **Consumer Key** and **Consumer Secret**
-
-</details>
-
-<details>
-<summary><b>Option B: Traditional Connected App</b></summary>
-
-1. Go to **Setup → Apps → App Manager**
-2. Click **New Connected App**
-3. Enable OAuth Settings:
-   - **Callback URL**: `http://localhost:8000/auth/callback`
-   - **Selected OAuth Scopes**:
-     - `Access and manage your data (api)`
-     - `Perform requests at any time (refresh_token)`
-4. Save and copy credentials
-
-</details>
 
 ### 2. Configure Environment
 
