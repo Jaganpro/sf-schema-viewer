@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5867E8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9050E9;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="45" fill="url(#grad)"/>
+  <!-- Schema nodes -->
+  <rect x="20" y="25" width="25" height="18" rx="3" fill="white" opacity="0.95"/>
+  <rect x="55" y="25" width="25" height="18" rx="3" fill="white" opacity="0.95"/>
+  <rect x="37" y="55" width="25" height="18" rx="3" fill="white" opacity="0.95"/>
+  <!-- Connection lines -->
+  <path d="M45 37 L55 37" stroke="white" stroke-width="2" stroke-dasharray="3,2" fill="none"/>
+  <path d="M32 43 L45 55" stroke="white" stroke-width="2" fill="none"/>
+  <path d="M68 43 L55 55" stroke="white" stroke-width="2" fill="none"/>
+  <!-- Node header bars -->
+  <rect x="20" y="25" width="25" height="6" rx="3" ry="0" fill="#5867E8"/>
+  <rect x="55" y="25" width="25" height="6" rx="3" ry="0" fill="#9050E9"/>
+  <rect x="37" y="55" width="25" height="6" rx="3" ry="0" fill="#5867E8"/>
+</svg>

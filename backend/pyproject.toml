@@ -1,0 +1,22 @@
+[project]
+name = "sf-schema-viewer-backend"
+version = "0.1.0"
+description = "FastAPI backend for Salesforce Schema Viewer"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.127.1",
+    "httpx>=0.28.1",
+    "python-dotenv>=1.2.1",
+    "simple-salesforce>=1.12.9",
+    "uvicorn[standard]>=0.40.0",
+]
+
+[project.scripts]
+dev = "uvicorn main:app --reload --port 8000"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+    "httpx>=0.28.1",
+]
