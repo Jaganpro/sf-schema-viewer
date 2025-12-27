@@ -3,7 +3,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, RefreshCw, Search, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,6 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '../../store';
 import type { ObjectBasicInfo } from '../../types/schema';
@@ -27,24 +33,114 @@ interface ObjectItemProps {
 }
 
 function ObjectItem({ object, isSelected, onToggle }: ObjectItemProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  const handleExpandClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded(!expanded);
+  };
+
   return (
     <div
       className={cn(
-        'flex items-center gap-2.5 px-4 py-2 cursor-pointer hover:bg-sf-background transition-colors',
+        'px-4 py-2 cursor-pointer hover:bg-sf-background transition-colors',
         isSelected && 'bg-blue-50'
       )}
-      onClick={onToggle}
     >
-      <Checkbox
-        checked={isSelected}
-        onCheckedChange={() => onToggle()}
-        onClick={(e) => e.stopPropagation()}
-      />
-      <div className="flex-1 overflow-hidden flex flex-col gap-0.5">
-        <span className="text-[13px] text-sf-text truncate">{object.label}</span>
-        <span className="text-[11px] text-sf-text-muted truncate">{object.name}</span>
-      </div>
-      {object.custom && <Badge variant="custom">Custom</Badge>}
+        {/* Main row */}
+        <div className="flex items-center gap-2.5" onClick={onToggle}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onToggle()}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="flex-1 overflow-hidden flex flex-col gap-0.5">
+            {/* Label row with inline capability icons */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[13px] text-sf-text truncate">{object.label}</span>
+              {/* Colored capability icons with tooltips */}
+              {object.searchable && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="shrink-0">
+                      <Search className="h-3 w-3 text-blue-500" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Searchable via SOSL queries</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {object.triggerable && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="shrink-0">
+                      <Zap className="h-3 w-3 text-amber-500" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Supports Apex Triggers</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {object.custom && <Badge variant="custom">Custom</Badge>}
+            </div>
+            {/* API name row with expand chevron */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] text-sf-text-muted truncate">{object.name}</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleExpandClick}
+                    className="p-0.5 hover:bg-gray-200 rounded transition-colors shrink-0"
+                  >
+                    {expanded ? (
+                      <ChevronUp className="h-3 w-3 text-sf-text-muted" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3 text-sf-text-muted" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{expanded ? 'Hide details' : 'Show details'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        </div>
+
+      {/* Expandable details */}
+      {expanded && (
+        <div className="mt-2 ml-7 p-2 bg-gray-50 rounded-md text-[11px] text-sf-text-muted space-y-1.5">
+          {/* CRUD Capabilities */}
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            <span className={object.queryable ? 'text-green-600' : 'text-gray-400'}>
+              {object.queryable ? '✓' : '✗'} Query
+            </span>
+            <span className={object.createable ? 'text-green-600' : 'text-gray-400'}>
+              {object.createable ? '✓' : '✗'} Create
+            </span>
+            <span className={object.updateable ? 'text-green-600' : 'text-gray-400'}>
+              {object.updateable ? '✓' : '✗'} Update
+            </span>
+            <span className={object.deletable ? 'text-green-600' : 'text-gray-400'}>
+              {object.deletable ? '✓' : '✗'} Delete
+            </span>
+          </div>
+          {/* Additional capabilities */}
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {object.feed_enabled && <span className="text-sf-blue">• Feed Enabled</span>}
+            {object.mergeable && <span className="text-sf-blue">• Mergeable</span>}
+            {object.replicateable && <span className="text-sf-blue">• Replicateable</span>}
+          </div>
+          {/* Key prefix */}
+          {object.key_prefix && (
+            <div className="text-gray-500">
+              Key Prefix: <span className="font-mono">{object.key_prefix}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -281,28 +377,30 @@ export default function ObjectPicker() {
           )}
 
           {/* Object list */}
-          <ScrollArea className="flex-1">
-            <div className="py-2">
-              {isLoadingObjects ? (
-                <div className="py-8 text-center text-sf-text-muted text-sm">
-                  Loading objects...
-                </div>
-              ) : filteredObjects.length === 0 ? (
-                <div className="py-8 text-center text-sf-text-muted text-sm">
-                  {searchTerm ? 'No matching objects' : 'No objects available'}
-                </div>
-              ) : (
-                filteredObjects.map((obj) => (
-                  <ObjectItem
-                    key={obj.name}
-                    object={obj}
-                    isSelected={selectedObjectNames.includes(obj.name)}
-                    onToggle={() => handleToggleObject(obj.name)}
-                  />
-                ))
-              )}
-            </div>
-          </ScrollArea>
+          <TooltipProvider delayDuration={200}>
+            <ScrollArea className="flex-1">
+              <div className="py-2">
+                {isLoadingObjects ? (
+                  <div className="py-8 text-center text-sf-text-muted text-sm">
+                    Loading objects...
+                  </div>
+                ) : filteredObjects.length === 0 ? (
+                  <div className="py-8 text-center text-sf-text-muted text-sm">
+                    {searchTerm ? 'No matching objects' : 'No objects available'}
+                  </div>
+                ) : (
+                  filteredObjects.map((obj) => (
+                    <ObjectItem
+                      key={obj.name}
+                      object={obj}
+                      isSelected={selectedObjectNames.includes(obj.name)}
+                      onToggle={() => handleToggleObject(obj.name)}
+                    />
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </TooltipProvider>
 
           {/* Footer */}
           <div className="px-4 py-3 border-t border-gray-200">

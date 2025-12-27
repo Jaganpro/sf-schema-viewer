@@ -75,6 +75,10 @@ class SalesforceService:
         objects = []
 
         for obj in describe["sobjects"]:
+            # Skip objects with missing labels (system objects without proper labels)
+            if obj["label"].startswith("__MISSING"):
+                continue
+
             objects.append(
                 ObjectBasicInfo(
                     name=obj["name"],
@@ -86,6 +90,12 @@ class SalesforceService:
                     createable=obj["createable"],
                     updateable=obj["updateable"],
                     deletable=obj["deletable"],
+                    # Additional capability flags
+                    searchable=obj.get("searchable", False),
+                    triggerable=obj.get("triggerable", False),
+                    feed_enabled=obj.get("feedEnabled", False),
+                    mergeable=obj.get("mergeable", False),
+                    replicateable=obj.get("replicateable", False),
                 )
             )
 

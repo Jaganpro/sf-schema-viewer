@@ -45,6 +45,12 @@ class ObjectBasicInfo(BaseModel):
     createable: bool
     updateable: bool
     deletable: bool
+    # Additional capability flags
+    searchable: bool = False
+    triggerable: bool = False
+    feed_enabled: bool = False
+    mergeable: bool = False
+    replicateable: bool = False
 
 
 class ObjectDescribe(BaseModel):

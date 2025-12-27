@@ -13,6 +13,9 @@ const badgeVariants = cva(
         outline: 'text-foreground',
         // Salesforce-specific variant for custom objects
         custom: 'border-transparent bg-sf-purple-light text-sf-purple text-[10px] px-1.5 py-0.5 rounded font-bold',
+        // Capability indicator badges (compact, icon-style)
+        capability: 'border-gray-300 bg-gray-50 text-gray-600 text-[10px] px-1.5 py-0 rounded font-medium',
+        capabilityActive: 'border-sf-blue/30 bg-sf-blue/10 text-sf-blue text-[10px] px-1.5 py-0 rounded font-medium',
       },
     },
     defaultVariants: {

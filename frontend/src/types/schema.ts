@@ -39,6 +39,12 @@ export interface ObjectBasicInfo {
   createable: boolean;
   updateable: boolean;
   deletable: boolean;
+  // Additional capability flags
+  searchable: boolean;
+  triggerable: boolean;
+  feed_enabled: boolean;
+  mergeable: boolean;
+  replicateable: boolean;
 }
 
 export interface ObjectDescribe {

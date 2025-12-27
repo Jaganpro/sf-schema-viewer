@@ -115,11 +115,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isLoadingApiVersions: true });
     try {
       const versions = await api.schema.getApiVersions();
-      // Default to a known stable version (v61.0 Spring '24 or v62.0 Winter '25)
+      // Default to a known stable version (v65.0 Winter '26 or fallbacks)
       // Fall back to latest if stable version not found
       const { apiVersion } = get();
       if (!apiVersion && versions.length > 0) {
-        const stableVersions = ['61.0', '62.0', '60.0'];
+        const stableVersions = ['65.0', '64.0', '63.0'];
         const stable = versions.find((v) => stableVersions.includes(v.version));
         const defaultVersion = stable ? `v${stable.version}` : `v${versions[0].version}`;
         set({
