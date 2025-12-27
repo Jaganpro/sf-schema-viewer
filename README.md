@@ -23,79 +23,71 @@
 ## ✨ Features
 
 ### 🔐 Authentication & Security
-| | |
-|---|---|
-| **OAuth 2.0 Flow** | Secure web server flow with refresh token support |
-| **Session Management** | Encrypted cookie sessions with automatic token refresh |
-| **Multi-Org Support** | Connect to any Production, Sandbox, or Developer org |
-| **API Version Selection** | Choose from available Salesforce API versions (v62.0 - v65.0+) |
+- 🔑 **OAuth 2.0 Flow** — Secure web server flow with refresh token support
+- 🍪 **Session Management** — Encrypted cookie sessions with automatic token refresh
+- 🌐 **Multi-Org Support** — Connect to any Production, Sandbox, or Developer org
+- 📡 **API Version Selection** — Choose from available Salesforce API versions (v62.0 - v65.0+)
 
 ### 📊 Interactive ERD Canvas
-| | |
-|---|---|
-| **Drag & Drop** | Freely position nodes on the canvas with position memory |
-| **Zoom & Pan** | Mouse wheel zoom (0.1x - 2x) and background drag panning |
-| **Auto-Layout** | One-click Dagre-powered hierarchical layout algorithm |
-| **Fit View** | Instantly center and fit all nodes in the viewport |
-| **Compact Mode** | Toggle field visibility for high-level schema overview |
+- 🖱️ **Drag & Drop** — Freely position nodes on the canvas with position memory
+- 🔍 **Zoom & Pan** — Mouse wheel zoom (0.1x - 2x) and background drag panning
+- 🔄 **Auto-Layout** — One-click Dagre-powered hierarchical layout algorithm
+- 🎯 **Fit View** — Instantly center and fit all nodes in the viewport
+- 🔲 **Compact Mode** — Toggle field visibility for high-level schema overview
+- 💾 **Position Memory** — Your node arrangements are preserved when adding objects
 
 ### 🔗 Relationship Visualization
-| | |
-|---|---|
-| **Smart Edge Routing** | Dynamic edge paths that avoid node overlaps |
-| **Relationship Types** | Dashed lines for Lookup, solid lines for Master-Detail |
-| **Cardinality Markers** | Visual N:1 indicators showing relationship direction |
-| **Color Coding** | Blue for Lookup relationships, Purple for Master-Detail |
-| **Interactive Legend** | Collapsible legend explaining all visual elements |
+- 🛤️ **Smart Edge Routing** — Dynamic edge paths that avoid node overlaps
+- ➖ **Lookup Relationships** — Dashed blue lines for optional references
+- ➡️ **Master-Detail Relationships** — Solid purple lines with cascade delete
+- 🔢 **Cardinality Markers** — Visual N:1 indicators showing relationship direction
+- 📖 **Interactive Legend** — Collapsible legend explaining all visual elements
 
 ### 🔍 Powerful Filtering & Search
-| | |
-|---|---|
-| **Instant Search** | Real-time filtering through 1000+ sObjects as you type |
-| **Namespace Filtering** | Filter by All, Standard, Custom (Local), or Packaged objects |
-| **Package Multi-Select** | When viewing packaged objects, filter by specific namespaces (npsp, npe01, etc.) |
-| **Object Type Filters** | Toggle visibility of 9 system object categories |
+- ⚡ **Instant Search** — Real-time filtering through 1000+ sObjects as you type
+- 🏷️ **Namespace Filtering** — Filter by All, Standard, Custom (Local), or Packaged objects
+- 📦 **Package Multi-Select** — Filter by specific namespaces (npsp, npe01, etc.)
+- 🎛️ **Object Type Filters** — Toggle visibility of 9 system object categories
+- 👁️ **Show/Hide System Objects** — Keep your ERD clean by hiding Feed, Share, History objects
 
-### 🏷️ Object Classification System
+### 🏷️ Object Classification Badges
 
 Intelligent badge system to quickly identify object types at a glance:
 
-| Badge | Description | Example |
-|-------|-------------|---------|
-| 🔵 `Standard` | Salesforce-provided objects | Account, Contact, Opportunity |
-| 🟣 `Custom` | Org-created custom objects | Invoice__c, Project__c |
-| 🟪 `[npsp]` | Managed package objects | npsp__General_Accounting_Unit__c |
+| Badge | Type | Example Objects |
+|:-----:|------|-----------------|
+| 🔵 `Standard` | Salesforce-provided | Account, Contact, Opportunity |
+| 🟣 `Custom` | Org-created | Invoice__c, Project__c |
+| 🟪 `[npsp]` | Managed package | npsp__General_Accounting_Unit__c |
 
 **System Object Type Badges** (hidden by default for cleaner views):
 
-| Badge | Suffix | Description |
-|-------|--------|-------------|
-| 🟠 `Feed` | *Feed | Chatter feed objects |
-| 🟢 `Share` | *Share | Sharing rule objects |
-| ⬜ `History` | *History | Field history tracking |
-| 🔴 `CDC` | *ChangeEvent | Change Data Capture events |
-| 🔷 `Event` | __e | Platform Events |
-| 🟦 `External` | __x | External Objects (OData) |
-| 🌊 `MDT` | __mdt | Custom Metadata Types |
-| 🟡 `Big` | __b | Big Objects |
-| 🟣 `Tag` | *Tag | Tagging objects |
+| | Badge | Suffix | Description |
+|:---:|:-----:|--------|-------------|
+| 🟠 | `Feed` | *Feed | Chatter feed objects |
+| 🟢 | `Share` | *Share | Sharing rule objects |
+| ⬜ | `History` | *History | Field history tracking |
+| 🔴 | `CDC` | *ChangeEvent | Change Data Capture events |
+| 🔷 | `Event` | __e | Platform Events |
+| 🟦 | `External` | __x | External Objects (OData) |
+| 🌊 | `Metadata` | __mdt | Custom Metadata Types |
+| 🟡 | `Big` | __b | Big Objects |
+| 🟣 | `Tag` | *Tag | Tagging objects |
 
 ### 🎨 User Interface
-| | |
-|---|---|
-| **Resizable Sidebar** | Drag to resize the object picker (200px - 600px) |
-| **Collapsible Sections** | Expand/collapse filter sections to save space |
-| **Object Count Badge** | See selected object count and total matches |
-| **Stats Panel** | Live count of objects and relationships on canvas |
-| **Dark/Light Badges** | High-contrast badges for accessibility |
+- ↔️ **Resizable Sidebar** — Drag to resize the object picker (200px - 600px)
+- 📂 **Collapsible Sections** — Expand/collapse filter sections to save space
+- 🔢 **Object Count Badge** — See selected count and total matches at a glance
+- 📊 **Stats Panel** — Live count of objects and relationships on canvas
+- ✨ **Modern UI** — Built with Tailwind CSS v4 and shadcn/ui components
 
-### 📦 Node Details
-Each object node displays:
-- **Object name** with Standard/Custom/Package badge
-- **Key prefix** (e.g., `001` for Account)
-- **Field list** with type icons (in expanded mode)
-- **Relationship fields** highlighted with reference indicators
-- **Collapse toggle** for individual node compaction
+### 📦 Object Node Details
+Each node on the canvas displays:
+- 🏷️ **Object Name** — With Standard/Custom/Package badge
+- 🔑 **Key Prefix** — Record ID prefix (e.g., `001` for Account)
+- 📋 **Field List** — All fields with type icons (in expanded mode)
+- 🔗 **Relationship Fields** — Highlighted with reference indicators
+- ➕ **Expand/Collapse** — Toggle individual node field visibility
 
 ---
 
