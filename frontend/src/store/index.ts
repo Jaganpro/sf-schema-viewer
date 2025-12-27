@@ -44,6 +44,23 @@ const DEFAULT_OBJECT_TYPE_FILTERS: ObjectTypeFilters = {
   tag: false,
 };
 
+/**
+ * Classification filter state - controls visibility of object classification types.
+ * true = show the classification, false = hide it (multi-select)
+ */
+interface ClassificationFilters {
+  standard: boolean;   // Salesforce-provided objects (Account, Contact, etc.)
+  custom: boolean;     // Org-created custom objects (without namespace)
+  packaged: boolean;   // Managed package objects (with namespace_prefix)
+}
+
+/** Default classification - show Standard and Custom, hide Packaged */
+const DEFAULT_CLASSIFICATION_FILTERS: ClassificationFilters = {
+  standard: true,
+  custom: true,
+  packaged: false,
+};
+
 interface AppState {
   // Auth state
   authStatus: AuthStatus | null;
@@ -68,11 +85,10 @@ interface AppState {
   // UI state
   sidebarOpen: boolean;
   sidebarWidth: number;
-  namespaceFilter: 'all' | 'standard' | 'custom-local' | 'packaged';
-  selectedNamespaces: string[];  // For filtering specific package namespaces
+  classificationFilters: ClassificationFilters;  // Multi-select classification (Standard, Custom, Packaged)
+  selectedNamespaces: string[];  // For filtering specific package namespaces when packaged is ON
   searchTerm: string;
   objectTypeFilters: ObjectTypeFilters;
-  filterSectionExpanded: boolean;
   showLegend: boolean;
 
   // Error state
@@ -90,12 +106,11 @@ interface AppState {
   applyLayout: () => void;
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
-  setNamespaceFilter: (filter: 'all' | 'standard' | 'custom-local' | 'packaged') => void;
+  toggleClassificationFilter: (filter: keyof ClassificationFilters) => void;
   setSelectedNamespaces: (namespaces: string[]) => void;
   toggleNamespace: (namespace: string) => void;
   setSearchTerm: (term: string) => void;
   toggleObjectTypeFilter: (filter: keyof ObjectTypeFilters) => void;
-  toggleFilterSection: () => void;
   showAllObjectTypes: () => void;
   hideAllSystemObjects: () => void;
   toggleLegend: () => void;
@@ -122,11 +137,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   edges: [],
   sidebarOpen: true,
   sidebarWidth: 300,
-  namespaceFilter: 'all',
+  classificationFilters: { ...DEFAULT_CLASSIFICATION_FILTERS },
   selectedNamespaces: [],
   searchTerm: '',
   objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS },
-  filterSectionExpanded: false,
   showLegend: true,
   error: null,
 
@@ -359,12 +373,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ sidebarWidth: clampedWidth });
   },
 
-  setNamespaceFilter: (filter) => {
-    set({ namespaceFilter: filter });
-    // Clear selected namespaces when switching away from 'packaged'
-    if (filter !== 'packaged') {
-      set({ selectedNamespaces: [] });
-    }
+  toggleClassificationFilter: (filter) => {
+    set((state) => {
+      const newFilters = {
+        ...state.classificationFilters,
+        [filter]: !state.classificationFilters[filter],
+      };
+      // Clear selected namespaces when packaged is turned off
+      if (filter === 'packaged' && newFilters.packaged === false) {
+        return { classificationFilters: newFilters, selectedNamespaces: [] };
+      }
+      return { classificationFilters: newFilters };
+    });
   },
 
   setSelectedNamespaces: (namespaces) => {
@@ -395,12 +415,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
-  toggleFilterSection: () => {
-    set((state) => ({ filterSectionExpanded: !state.filterSectionExpanded }));
-  },
-
   showAllObjectTypes: () => {
     set({
+      classificationFilters: { standard: true, custom: true, packaged: true },
       objectTypeFilters: {
         feed: true,
         share: true,
@@ -416,7 +433,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   hideAllSystemObjects: () => {
-    set({ objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS } });
+    set({
+      classificationFilters: { ...DEFAULT_CLASSIFICATION_FILTERS },
+      objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS },
+    });
   },
 
   toggleLegend: () => {

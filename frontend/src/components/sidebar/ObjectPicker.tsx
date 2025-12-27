@@ -3,19 +3,13 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, RefreshCw, Search, Zap, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, RefreshCw, Search, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { FilterChip } from '@/components/ui/filter-chip';
 import {
   Tooltip,
   TooltipContent,
@@ -191,19 +185,17 @@ export default function ObjectPicker() {
     availableObjects,
     selectedObjectNames,
     isLoadingObjects,
-    namespaceFilter,
+    classificationFilters,
     selectedNamespaces,
     searchTerm,
     objectTypeFilters,
-    filterSectionExpanded,
     addObject,
     removeObject,
     selectObjects,
-    setNamespaceFilter,
+    toggleClassificationFilter,
     toggleNamespace,
     setSearchTerm,
     toggleObjectTypeFilter,
-    toggleFilterSection,
     showAllObjectTypes,
     hideAllSystemObjects,
     loadObjects,
@@ -262,18 +254,6 @@ export default function ObjectPicker() {
     setSearchTerm(value);
   }, [setSearchTerm]);
 
-  // Calculate how many objects are hidden by type filters
-  const hiddenCount = useMemo(() => {
-    return availableObjects.filter((obj) => {
-      for (const config of OBJECT_TYPE_FILTERS) {
-        if (!objectTypeFilters[config.key] && config.pattern(obj.name)) {
-          return true;
-        }
-      }
-      return false;
-    }).length;
-  }, [availableObjects, objectTypeFilters]);
-
   // Get unique namespaces from available objects (for package filter chips)
   const uniqueNamespaces = useMemo(() => {
     return [...new Set(
@@ -286,21 +266,22 @@ export default function ObjectPicker() {
   const filteredObjects = useMemo(() => {
     let filtered = availableObjects;
 
-    // Namespace filter (standard/custom-local/packaged)
-    if (namespaceFilter === 'standard') {
-      filtered = filtered.filter((obj) => !obj.custom);
-    } else if (namespaceFilter === 'custom-local') {
-      // Custom objects WITHOUT a namespace (org-created)
-      filtered = filtered.filter((obj) => obj.custom && !obj.namespace_prefix);
-    } else if (namespaceFilter === 'packaged') {
-      // Custom objects WITH a namespace (from packages)
-      filtered = filtered.filter((obj) => obj.custom && obj.namespace_prefix);
-      // Further filter by selected namespaces if any selected
-      if (selectedNamespaces.length > 0) {
-        filtered = filtered.filter((obj) =>
-          selectedNamespaces.includes(obj.namespace_prefix!)
-        );
-      }
+    // Classification filter (multi-select: Standard, Custom, Packaged)
+    filtered = filtered.filter((obj) => {
+      // Standard objects - not custom
+      if (!obj.custom && classificationFilters.standard) return true;
+      // Custom (local) objects - custom without namespace
+      if (obj.custom && !obj.namespace_prefix && classificationFilters.custom) return true;
+      // Packaged objects - custom with namespace
+      if (obj.custom && obj.namespace_prefix && classificationFilters.packaged) return true;
+      return false;
+    });
+
+    // Namespace sub-filter (only when packaged is ON and namespaces selected)
+    if (classificationFilters.packaged && selectedNamespaces.length > 0) {
+      filtered = filtered.filter((obj) =>
+        !obj.namespace_prefix || selectedNamespaces.includes(obj.namespace_prefix)
+      );
     }
 
     // Object type filters - hide objects matching patterns when filter is OFF
@@ -332,7 +313,7 @@ export default function ObjectPicker() {
       if (!aSelected && bSelected) return 1;
       return a.label.localeCompare(b.label);
     });
-  }, [availableObjects, namespaceFilter, selectedNamespaces, objectTypeFilters, searchTerm, selectedObjectNames]);
+  }, [availableObjects, classificationFilters, selectedNamespaces, objectTypeFilters, searchTerm, selectedObjectNames]);
 
   const handleToggleObject = useCallback((objectName: string) => {
     if (selectedObjectNames.includes(objectName)) {
@@ -423,27 +404,31 @@ export default function ObjectPicker() {
             )}
           </div>
 
-          {/* Namespace Filter */}
-          <div className="px-4 pb-3">
-            <Select
-              value={namespaceFilter}
-              onValueChange={(value) => setNamespaceFilter(value as 'all' | 'standard' | 'custom-local' | 'packaged')}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All Objects" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Objects</SelectItem>
-                <SelectItem value="standard">Standard Only</SelectItem>
-                <SelectItem value="custom-local">Custom (Local)</SelectItem>
-                <SelectItem value="packaged">Packaged Only</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Classification Filter Chips */}
+          <div className="px-4 py-3 border-b border-gray-100">
+            <div className="text-xs text-sf-text-muted mb-2 font-medium">Show:</div>
+            <div className="flex flex-wrap gap-1.5">
+              <FilterChip
+                label="Standard"
+                active={classificationFilters.standard}
+                onClick={() => toggleClassificationFilter('standard')}
+              />
+              <FilterChip
+                label="Custom"
+                active={classificationFilters.custom}
+                onClick={() => toggleClassificationFilter('custom')}
+              />
+              <FilterChip
+                label="Packaged"
+                active={classificationFilters.packaged}
+                onClick={() => toggleClassificationFilter('packaged')}
+              />
+            </div>
 
-            {/* Namespace chip selector - shows when "Packaged" selected */}
-            {namespaceFilter === 'packaged' && uniqueNamespaces.length > 0 && (
-              <div className="mt-2 space-y-1">
-                <label className="text-xs text-sf-text-muted">Filter by namespace:</label>
+            {/* Namespace sub-filter (when Packaged is active) */}
+            {classificationFilters.packaged && uniqueNamespaces.length > 0 && (
+              <div className="mt-2.5 space-y-1.5">
+                <div className="text-xs text-sf-text-muted">Filter by namespace:</div>
                 <div className="flex flex-wrap gap-1">
                   {uniqueNamespaces.map((ns) => (
                     <button
@@ -451,81 +436,56 @@ export default function ObjectPicker() {
                       onClick={() => toggleNamespace(ns)}
                       className={cn(
                         'px-2 py-0.5 text-xs rounded border transition-colors',
-                        selectedNamespaces.includes(ns)
+                        selectedNamespaces.length === 0 || selectedNamespaces.includes(ns)
                           ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
-                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                          : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
                       )}
                     >
                       {ns}
                     </button>
                   ))}
                 </div>
-                {selectedNamespaces.length > 0 && (
-                  <button
-                    onClick={() => setNamespaceFilter('packaged')}
-                    className="text-xs text-sf-blue hover:underline"
-                  >
-                    Clear selection
-                  </button>
-                )}
               </div>
             )}
           </div>
 
-          {/* Object Type Filters - Collapsible */}
-          <div className="px-4 pb-3 border-b border-gray-100">
-            <button
-              onClick={toggleFilterSection}
-              className="flex items-center justify-between w-full py-2 text-sm font-medium text-sf-text hover:text-sf-blue transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Object Type Filters
-                {hiddenCount > 0 && (
-                  <span className="text-xs text-sf-text-muted font-normal">
-                    ({hiddenCount} hidden)
-                  </span>
-                )}
-              </span>
-              {filterSectionExpanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </button>
-
-            {filterSectionExpanded && (
-              <div className="mt-2 space-y-2 pl-6">
-                {OBJECT_TYPE_FILTERS.map((filter) => (
-                  <label
-                    key={filter.key}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={objectTypeFilters[filter.key]}
-                      onCheckedChange={() => toggleObjectTypeFilter(filter.key)}
-                    />
-                    <Badge variant={filter.variant as any}>{filter.badge}</Badge>
-                    <span className="text-sm text-sf-text">{filter.label}</span>
-                  </label>
-                ))}
-                <div className="flex gap-2 pt-2 text-xs">
-                  <button
-                    onClick={showAllObjectTypes}
-                    className="text-sf-blue hover:underline"
-                  >
-                    Show All
-                  </button>
-                  <span className="text-sf-text-muted">|</span>
-                  <button
-                    onClick={hideAllSystemObjects}
-                    className="text-sf-blue hover:underline"
-                  >
-                    Hide System
-                  </button>
-                </div>
+          {/* System Type Filter Chips */}
+          <div className="px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-sf-text-muted font-medium">Include System:</span>
+              <div className="flex gap-2 text-xs">
+                <button
+                  onClick={showAllObjectTypes}
+                  className="text-sf-blue hover:underline"
+                >
+                  All
+                </button>
+                <span className="text-sf-text-muted">|</span>
+                <button
+                  onClick={hideAllSystemObjects}
+                  className="text-sf-blue hover:underline"
+                >
+                  Reset
+                </button>
               </div>
-            )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {OBJECT_TYPE_FILTERS.map((filter) => (
+                <FilterChip
+                  key={filter.key}
+                  label={filter.badge}
+                  active={objectTypeFilters[filter.key]}
+                  onClick={() => toggleObjectTypeFilter(filter.key)}
+                  variant="system"
+                  badgeVariant={filter.variant as any}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Object count indicator */}
+          <div className="px-4 py-2 text-xs text-sf-text-muted border-b border-gray-100">
+            Showing {filteredObjects.length} of {availableObjects.length} objects
           </div>
 
           {/* Actions */}
