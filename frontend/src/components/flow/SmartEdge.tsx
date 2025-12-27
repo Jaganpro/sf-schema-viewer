@@ -191,6 +191,9 @@ function SmartEdge({
     targetNode?.measured?.height,
     edgeIndex,
     totalEdges,
+    // Force recalculation when _refresh changes (after node measurements complete)
+    // This works around React Flow mutating node.measured in place without triggering re-renders
+    (data as Record<string, unknown>)?._refresh,
   ]);
 
   // Early return if nodes not found

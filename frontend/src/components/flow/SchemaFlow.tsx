@@ -76,6 +76,23 @@ export default function SchemaFlow() {
       }));
     });
     setEdges(storeEdges);
+
+    // Force edges to re-render after React Flow measures new nodes
+    // This is needed because SmartEdge returns null until nodes are measured,
+    // and React Flow mutates node.measured in place without triggering re-renders
+    const timer = setTimeout(() => {
+      setEdges(currentEdges =>
+        currentEdges.map(edge => ({
+          ...edge,
+          data: {
+            ...edge.data,
+            _refresh: Date.now(),
+          },
+        }))
+      );
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [storeNodes, storeEdges, setNodes, setEdges, compactMode]);
 
   // Toggle compact mode without resetting positions
