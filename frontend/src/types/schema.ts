@@ -35,6 +35,7 @@ export interface ObjectBasicInfo {
   label_plural: string;
   key_prefix?: string;
   custom: boolean;
+  namespace_prefix?: string;  // Package namespace (e.g., "npsp", "npe01")
   queryable: boolean;
   createable: boolean;
   updateable: boolean;

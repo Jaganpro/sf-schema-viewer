@@ -68,7 +68,8 @@ interface AppState {
   // UI state
   sidebarOpen: boolean;
   sidebarWidth: number;
-  namespaceFilter: 'all' | 'standard' | 'custom';
+  namespaceFilter: 'all' | 'standard' | 'custom-local' | 'packaged';
+  selectedNamespaces: string[];  // For filtering specific package namespaces
   searchTerm: string;
   objectTypeFilters: ObjectTypeFilters;
   filterSectionExpanded: boolean;
@@ -89,7 +90,9 @@ interface AppState {
   applyLayout: () => void;
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
-  setNamespaceFilter: (filter: 'all' | 'standard' | 'custom') => void;
+  setNamespaceFilter: (filter: 'all' | 'standard' | 'custom-local' | 'packaged') => void;
+  setSelectedNamespaces: (namespaces: string[]) => void;
+  toggleNamespace: (namespace: string) => void;
   setSearchTerm: (term: string) => void;
   toggleObjectTypeFilter: (filter: keyof ObjectTypeFilters) => void;
   toggleFilterSection: () => void;
@@ -120,6 +123,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarOpen: true,
   sidebarWidth: 300,
   namespaceFilter: 'all',
+  selectedNamespaces: [],
   searchTerm: '',
   objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS },
   filterSectionExpanded: false,
@@ -357,6 +361,25 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setNamespaceFilter: (filter) => {
     set({ namespaceFilter: filter });
+    // Clear selected namespaces when switching away from 'packaged'
+    if (filter !== 'packaged') {
+      set({ selectedNamespaces: [] });
+    }
+  },
+
+  setSelectedNamespaces: (namespaces) => {
+    set({ selectedNamespaces: namespaces });
+  },
+
+  toggleNamespace: (namespace) => {
+    set((state) => {
+      const current = state.selectedNamespaces;
+      if (current.includes(namespace)) {
+        return { selectedNamespaces: current.filter((ns) => ns !== namespace) };
+      } else {
+        return { selectedNamespaces: [...current, namespace] };
+      }
+    });
   },
 
   setSearchTerm: (term) => {

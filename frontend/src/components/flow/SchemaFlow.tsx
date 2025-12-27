@@ -272,6 +272,7 @@ export default function SchemaFlow() {
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <Badge variant="standard">Standard</Badge>
                     <Badge variant="custom">Custom</Badge>
+                    <Badge variant="namespace">pkg</Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
                     <Badge variant="feed">Feed</Badge>

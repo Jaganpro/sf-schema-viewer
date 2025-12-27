@@ -112,7 +112,12 @@ function ObjectItem({ object, isSelected, onToggle }: ObjectItemProps) {
               )}
               {/* Object classification badges */}
               {object.custom ? (
-                <Badge variant="custom">Custom</Badge>
+                <>
+                  <Badge variant="custom">Custom</Badge>
+                  {object.namespace_prefix && (
+                    <Badge variant="namespace">{object.namespace_prefix}</Badge>
+                  )}
+                </>
               ) : (
                 <Badge variant="standard">Standard</Badge>
               )}
@@ -187,6 +192,7 @@ export default function ObjectPicker() {
     selectedObjectNames,
     isLoadingObjects,
     namespaceFilter,
+    selectedNamespaces,
     searchTerm,
     objectTypeFilters,
     filterSectionExpanded,
@@ -194,6 +200,7 @@ export default function ObjectPicker() {
     removeObject,
     selectObjects,
     setNamespaceFilter,
+    toggleNamespace,
     setSearchTerm,
     toggleObjectTypeFilter,
     toggleFilterSection,
@@ -267,14 +274,33 @@ export default function ObjectPicker() {
     }).length;
   }, [availableObjects, objectTypeFilters]);
 
+  // Get unique namespaces from available objects (for package filter chips)
+  const uniqueNamespaces = useMemo(() => {
+    return [...new Set(
+      availableObjects
+        .filter((obj) => obj.namespace_prefix)
+        .map((obj) => obj.namespace_prefix!)
+    )].sort();
+  }, [availableObjects]);
+
   const filteredObjects = useMemo(() => {
     let filtered = availableObjects;
 
-    // Namespace filter (standard/custom)
+    // Namespace filter (standard/custom-local/packaged)
     if (namespaceFilter === 'standard') {
       filtered = filtered.filter((obj) => !obj.custom);
-    } else if (namespaceFilter === 'custom') {
-      filtered = filtered.filter((obj) => obj.custom);
+    } else if (namespaceFilter === 'custom-local') {
+      // Custom objects WITHOUT a namespace (org-created)
+      filtered = filtered.filter((obj) => obj.custom && !obj.namespace_prefix);
+    } else if (namespaceFilter === 'packaged') {
+      // Custom objects WITH a namespace (from packages)
+      filtered = filtered.filter((obj) => obj.custom && obj.namespace_prefix);
+      // Further filter by selected namespaces if any selected
+      if (selectedNamespaces.length > 0) {
+        filtered = filtered.filter((obj) =>
+          selectedNamespaces.includes(obj.namespace_prefix!)
+        );
+      }
     }
 
     // Object type filters - hide objects matching patterns when filter is OFF
@@ -306,7 +332,7 @@ export default function ObjectPicker() {
       if (!aSelected && bSelected) return 1;
       return a.label.localeCompare(b.label);
     });
-  }, [availableObjects, namespaceFilter, objectTypeFilters, searchTerm, selectedObjectNames]);
+  }, [availableObjects, namespaceFilter, selectedNamespaces, objectTypeFilters, searchTerm, selectedObjectNames]);
 
   const handleToggleObject = useCallback((objectName: string) => {
     if (selectedObjectNames.includes(objectName)) {
@@ -401,7 +427,7 @@ export default function ObjectPicker() {
           <div className="px-4 pb-3">
             <Select
               value={namespaceFilter}
-              onValueChange={(value) => setNamespaceFilter(value as 'all' | 'standard' | 'custom')}
+              onValueChange={(value) => setNamespaceFilter(value as 'all' | 'standard' | 'custom-local' | 'packaged')}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All Objects" />
@@ -409,9 +435,41 @@ export default function ObjectPicker() {
               <SelectContent>
                 <SelectItem value="all">All Objects</SelectItem>
                 <SelectItem value="standard">Standard Only</SelectItem>
-                <SelectItem value="custom">Custom Only</SelectItem>
+                <SelectItem value="custom-local">Custom (Local)</SelectItem>
+                <SelectItem value="packaged">Packaged Only</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Namespace chip selector - shows when "Packaged" selected */}
+            {namespaceFilter === 'packaged' && uniqueNamespaces.length > 0 && (
+              <div className="mt-2 space-y-1">
+                <label className="text-xs text-sf-text-muted">Filter by namespace:</label>
+                <div className="flex flex-wrap gap-1">
+                  {uniqueNamespaces.map((ns) => (
+                    <button
+                      key={ns}
+                      onClick={() => toggleNamespace(ns)}
+                      className={cn(
+                        'px-2 py-0.5 text-xs rounded border transition-colors',
+                        selectedNamespaces.includes(ns)
+                          ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
+                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                      )}
+                    >
+                      {ns}
+                    </button>
+                  ))}
+                </div>
+                {selectedNamespaces.length > 0 && (
+                  <button
+                    onClick={() => setNamespaceFilter('packaged')}
+                    className="text-xs text-sf-blue hover:underline"
+                  >
+                    Clear selection
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Object Type Filters - Collapsible */}

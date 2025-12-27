@@ -86,6 +86,7 @@ class SalesforceService:
                     label_plural=obj["labelPlural"],
                     key_prefix=obj.get("keyPrefix"),
                     custom=obj["custom"],
+                    namespace_prefix=obj.get("namespacePrefix"),  # Package namespace
                     queryable=obj["queryable"],
                     createable=obj["createable"],
                     updateable=obj["updateable"],

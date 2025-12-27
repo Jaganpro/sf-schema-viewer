@@ -41,6 +41,7 @@ class ObjectBasicInfo(BaseModel):
     label_plural: str
     key_prefix: str | None = None
     custom: bool
+    namespace_prefix: str | None = None  # Package namespace (e.g., "npsp", "npe01")
     queryable: bool
     createable: bool
     updateable: bool
