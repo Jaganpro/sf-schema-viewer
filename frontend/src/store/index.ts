@@ -92,6 +92,9 @@ interface AppState {
   showLegend: boolean;
   focusedObjectName: string | null;  // Object shown in detail panel
 
+  // Field selection state - which fields to show in ERD for each object
+  selectedFieldsByObject: Map<string, Set<string>>;
+
   // Error state
   error: string | null;
 
@@ -116,6 +119,13 @@ interface AppState {
   hideAllSystemObjects: () => void;
   toggleLegend: () => void;
   setFocusedObject: (name: string | null) => void;
+  // Field selection actions
+  describeObject: (name: string) => Promise<void>;  // Fetch-only, doesn't add to ERD
+  toggleFieldSelection: (objectName: string, fieldName: string) => void;
+  selectAllFields: (objectName: string) => void;
+  clearFieldSelection: (objectName: string) => void;
+  selectOnlyLookups: (objectName: string) => void;
+  refreshNodeFields: (objectName: string) => void;  // Update node fields without re-layout
   toggleNodeCollapse: (nodeId: string) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
@@ -145,6 +155,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS },
   showLegend: true,
   focusedObjectName: null,
+  selectedFieldsByObject: new Map(),
   error: null,
 
   // Actions
@@ -286,12 +297,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // Get the describe for the new object
     const newDescribedObjects = get().describedObjects;
+    const { selectedFieldsByObject } = get();
     const describes = newSelectedObjects
       .map((n) => newDescribedObjects.get(n))
       .filter((d): d is ObjectDescribe => d !== undefined);
 
-    // Transform to get new nodes and edges
-    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects);
+    // Transform to get new nodes and edges (with field selection filtering)
+    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, selectedFieldsByObject);
 
     // Preserve existing node positions, only position new nodes
     const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
@@ -316,10 +328,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   removeObject: (name: string) => {
-    const { selectedObjectNames, describedObjects, nodes } = get();
+    const { selectedObjectNames, describedObjects, selectedFieldsByObject, nodes } = get();
 
     const newSelectedObjects = selectedObjectNames.filter((n) => n !== name);
-    set({ selectedObjectNames: newSelectedObjects });
+
+    // Clear field selections for the removed object
+    const newFieldSelections = new Map(selectedFieldsByObject);
+    newFieldSelections.delete(name);
+
+    set({ selectedObjectNames: newSelectedObjects, selectedFieldsByObject: newFieldSelections });
 
     // Get describes for remaining objects
     const describes = newSelectedObjects
@@ -331,8 +348,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    // Transform to get updated nodes and edges
-    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects);
+    // Transform to get updated nodes and edges (with field selection filtering)
+    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, newFieldSelections);
 
     // Preserve existing node positions
     const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
@@ -345,7 +362,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   applyLayout: () => {
-    const { selectedObjectNames, describedObjects } = get();
+    const { selectedObjectNames, describedObjects, selectedFieldsByObject } = get();
 
     // Get describes for selected objects
     const describes = selectedObjectNames
@@ -357,8 +374,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    // Transform to React Flow elements
-    const { nodes, edges } = transformToFlowElements(describes, selectedObjectNames);
+    // Transform to React Flow elements (pass field selection for filtering)
+    const { nodes, edges } = transformToFlowElements(describes, selectedObjectNames, selectedFieldsByObject);
 
     // Apply Dagre layout
     const layouted = applyDagreLayout(nodes, edges);
@@ -448,6 +465,158 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setFocusedObject: (name: string | null) => {
     set({ focusedObjectName: name });
+  },
+
+  // Fetch object description without adding to ERD (for detail panel auto-fetch)
+  describeObject: async (name: string) => {
+    const { describedObjects, apiVersion } = get();
+
+    // Already described, no need to fetch
+    if (describedObjects.has(name)) {
+      return;
+    }
+
+    set({ isLoadingDescribe: true, error: null });
+    try {
+      const describe = await api.schema.describeObject(name, apiVersion ?? undefined);
+      const newDescribed = new Map(describedObjects);
+      newDescribed.set(name, describe);
+      set({ describedObjects: newDescribed, isLoadingDescribe: false });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `Failed to describe ${name}`;
+      set({ isLoadingDescribe: false, error: message });
+    }
+  },
+
+  toggleFieldSelection: (objectName: string, fieldName: string) => {
+    // Use functional update to ensure atomic state change
+    set((state) => {
+      // Update field selection
+      const newFieldsMap = new Map(state.selectedFieldsByObject);
+      const currentFields = newFieldsMap.get(objectName) ?? new Set<string>();
+      const newFields = new Set(currentFields);
+
+      if (newFields.has(fieldName)) {
+        newFields.delete(fieldName);
+      } else {
+        newFields.add(fieldName);
+      }
+      newFieldsMap.set(objectName, newFields);
+
+      // If object is in ERD, update node fields in the same atomic operation
+      if (state.selectedObjectNames.includes(objectName)) {
+        const describe = state.describedObjects.get(objectName);
+        if (describe) {
+          const filteredFields = newFields.size > 0
+            ? describe.fields.filter((f) => newFields.has(f.name))
+            : [];
+
+          const updatedNodes = state.nodes.map((node) =>
+            node.id === objectName
+              ? { ...node, data: { ...(node.data as ObjectNodeData), fields: filteredFields } }
+              : node
+          );
+
+          return { selectedFieldsByObject: newFieldsMap, nodes: updatedNodes };
+        }
+      }
+
+      return { selectedFieldsByObject: newFieldsMap };
+    });
+  },
+
+  selectAllFields: (objectName: string) => {
+    set((state) => {
+      const describe = state.describedObjects.get(objectName);
+      if (!describe) return state;
+
+      const allFieldNames = new Set(describe.fields.map((f) => f.name));
+      const newFieldsMap = new Map(state.selectedFieldsByObject);
+      newFieldsMap.set(objectName, allFieldNames);
+
+      // If object is in ERD, update node fields
+      if (state.selectedObjectNames.includes(objectName)) {
+        const updatedNodes = state.nodes.map((node) =>
+          node.id === objectName
+            ? { ...node, data: { ...(node.data as ObjectNodeData), fields: describe.fields } }
+            : node
+        );
+        return { selectedFieldsByObject: newFieldsMap, nodes: updatedNodes };
+      }
+
+      return { selectedFieldsByObject: newFieldsMap };
+    });
+  },
+
+  clearFieldSelection: (objectName: string) => {
+    set((state) => {
+      const newFieldsMap = new Map(state.selectedFieldsByObject);
+      newFieldsMap.set(objectName, new Set<string>());
+
+      // If object is in ERD, update node fields to empty
+      if (state.selectedObjectNames.includes(objectName)) {
+        const updatedNodes = state.nodes.map((node) =>
+          node.id === objectName
+            ? { ...node, data: { ...(node.data as ObjectNodeData), fields: [] } }
+            : node
+        );
+        return { selectedFieldsByObject: newFieldsMap, nodes: updatedNodes };
+      }
+
+      return { selectedFieldsByObject: newFieldsMap };
+    });
+  },
+
+  selectOnlyLookups: (objectName: string) => {
+    set((state) => {
+      const describe = state.describedObjects.get(objectName);
+      if (!describe) return state;
+
+      // Select only reference (lookup) fields
+      const lookupFieldNames = new Set(
+        describe.fields
+          .filter((f) => f.reference_to && f.reference_to.length > 0)
+          .map((f) => f.name)
+      );
+      const newFieldsMap = new Map(state.selectedFieldsByObject);
+      newFieldsMap.set(objectName, lookupFieldNames);
+
+      // If object is in ERD, update node fields
+      if (state.selectedObjectNames.includes(objectName)) {
+        const filteredFields = describe.fields.filter((f) =>
+          f.reference_to && f.reference_to.length > 0
+        );
+        const updatedNodes = state.nodes.map((node) =>
+          node.id === objectName
+            ? { ...node, data: { ...(node.data as ObjectNodeData), fields: filteredFields } }
+            : node
+        );
+        return { selectedFieldsByObject: newFieldsMap, nodes: updatedNodes };
+      }
+
+      return { selectedFieldsByObject: newFieldsMap };
+    });
+  },
+
+  // Update node fields in-place without re-running Dagre layout (kept for external use)
+  refreshNodeFields: (objectName: string) => {
+    set((state) => {
+      const describe = state.describedObjects.get(objectName);
+      if (!describe) return state;
+
+      const selectedFieldNames = state.selectedFieldsByObject.get(objectName) ?? new Set<string>();
+      const filteredFields = selectedFieldNames.size > 0
+        ? describe.fields.filter((f) => selectedFieldNames.has(f.name))
+        : [];
+
+      const updatedNodes = state.nodes.map((node) =>
+        node.id === objectName
+          ? { ...node, data: { ...(node.data as ObjectNodeData), fields: filteredFields } }
+          : node
+      );
+
+      return { nodes: updatedNodes };
+    });
   },
 
   toggleNodeCollapse: (nodeId: string) => {

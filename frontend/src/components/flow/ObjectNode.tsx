@@ -263,13 +263,22 @@ function ObjectNode({ data, selected }: ObjectNodeProps) {
       {/* Fields - only show if not compact and not collapsed */}
       {!isCompact && !data.collapsed && (
         <div className="py-1.5 max-h-[280px] overflow-y-auto bg-[#FAFBFC] scrollbar-thin">
-          {visibleFields.map((field) => (
-            <FieldRow key={field.name} field={field} showHandle={false} />
-          ))}
-          {hiddenCount > 0 && (
-            <div className="px-3.5 py-2 text-sf-blue-dark cursor-pointer text-center text-[11px] bg-gray-100 border-t border-gray-200 hover:bg-gray-200 transition-colors">
-              ... +{hiddenCount} more fields
+          {visibleFields.length === 0 && sortedFields.length === 0 ? (
+            /* No fields selected - show helpful message */
+            <div className="px-3.5 py-3 text-center text-sf-text-muted text-[11px] italic">
+              No fields selected
             </div>
+          ) : (
+            <>
+              {visibleFields.map((field) => (
+                <FieldRow key={field.name} field={field} showHandle={false} />
+              ))}
+              {hiddenCount > 0 && (
+                <div className="px-3.5 py-2 text-sf-blue-dark cursor-pointer text-center text-[11px] bg-gray-100 border-t border-gray-200 hover:bg-gray-200 transition-colors">
+                  ... +{hiddenCount} more fields
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

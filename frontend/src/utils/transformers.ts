@@ -13,10 +13,14 @@ type RelationshipType = 'lookup' | 'master-detail';
 
 /**
  * Transform Salesforce object describes to React Flow elements.
+ * @param describes - Array of object descriptions
+ * @param selectedObjects - Names of objects currently in the ERD
+ * @param selectedFieldsByObject - Map of object name to selected field names (for filtering)
  */
 export function transformToFlowElements(
   describes: ObjectDescribe[],
-  selectedObjects: string[]
+  selectedObjects: string[],
+  selectedFieldsByObject?: Map<string, Set<string>>
 ): { nodes: Node<ObjectNodeData>[]; edges: Edge<RelationshipEdgeData>[] } {
   const selectedSet = new Set(selectedObjects);
   const nodes: Node<ObjectNodeData>[] = [];
@@ -24,6 +28,12 @@ export function transformToFlowElements(
 
   // Create nodes for each described object
   for (const describe of describes) {
+    // Filter fields based on selection - only show selected fields in node
+    const selectedFields = selectedFieldsByObject?.get(describe.name);
+    const filteredFields = selectedFields?.size
+      ? describe.fields.filter((f) => selectedFields.has(f.name))
+      : []; // Empty array if no fields selected (default: no fields)
+
     nodes.push({
       id: describe.name,
       type: 'objectNode',
@@ -33,13 +43,14 @@ export function transformToFlowElements(
         apiName: describe.name,
         keyPrefix: describe.key_prefix,
         isCustom: describe.custom,
-        fields: describe.fields,
+        fields: filteredFields,
         collapsed: false,
       },
     });
   }
 
-  // Create edges for relationships
+  // Create edges for relationships (always use full describe, not filtered fields)
+  // User choice: edges should always show regardless of field selection
   for (const describe of describes) {
     for (const field of describe.fields) {
       // Only create edges for reference fields

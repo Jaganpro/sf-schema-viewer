@@ -58,21 +58,14 @@ export default function SchemaFlow() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
   const { fitView } = useReactFlow();
 
-  // Sync nodes from store when objects are added/removed
+  // Sync nodes from store when objects are added/removed OR when node data changes
   // Preserve local positions for existing nodes (user may have dragged them)
   useEffect(() => {
-    const storeNodeIds = new Set(storeNodes.map(n => n.id));
-    const currentNodeIds = new Set(nodes.map(n => n.id));
+    // Use callback form to access current nodes without adding to dependencies
+    setNodes(currentNodes => {
+      const currentPositions = new Map(currentNodes.map(n => [n.id, n.position]));
 
-    // Check if node set changed
-    const sameNodes = storeNodeIds.size === currentNodeIds.size &&
-      [...storeNodeIds].every(id => currentNodeIds.has(id));
-
-    if (!sameNodes) {
-      // Preserve positions of existing nodes that user may have moved
-      const currentPositions = new Map(nodes.map(n => [n.id, n.position]));
-
-      const nodesWithCompact = storeNodes.map(node => ({
+      return storeNodes.map(node => ({
         ...node,
         // Use current position if exists (preserves drag), otherwise use store position
         position: currentPositions.get(node.id) ?? node.position,
@@ -81,10 +74,9 @@ export default function SchemaFlow() {
           compactMode,
         },
       }));
-      setNodes(nodesWithCompact);
-    }
+    });
     setEdges(storeEdges);
-  }, [storeNodes, storeEdges, setNodes, setEdges, nodes, compactMode]);
+  }, [storeNodes, storeEdges, setNodes, setEdges, compactMode]);
 
   // Toggle compact mode without resetting positions
   // Also refresh edges after a delay to allow node measurements to update

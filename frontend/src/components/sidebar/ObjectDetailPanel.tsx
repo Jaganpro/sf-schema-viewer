@@ -3,7 +3,7 @@
  * Appears when an object is focused in the object list.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Search,
@@ -11,11 +11,14 @@ import {
   ChevronRight,
   Zap,
   ArrowRight,
+  Loader2,
+  Link,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '../../store';
 import type { FieldInfo } from '../../types/schema';
@@ -51,9 +54,28 @@ function formatFieldType(field: FieldInfo): string {
 }
 
 export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailPanelProps) {
-  const { availableObjects, describedObjects, addObject, selectedObjectNames } = useAppStore();
+  const {
+    availableObjects,
+    describedObjects,
+    addObject,
+    selectedObjectNames,
+    describeObject,
+    isLoadingDescribe,
+    selectedFieldsByObject,
+    toggleFieldSelection,
+    selectAllFields,
+    clearFieldSelection,
+    selectOnlyLookups,
+  } = useAppStore();
   const [fieldSearch, setFieldSearch] = useState('');
   const [showRelationships, setShowRelationships] = useState(false);
+
+  // Auto-fetch when panel opens for an undescribed object
+  useEffect(() => {
+    if (objectName && !describedObjects.has(objectName)) {
+      describeObject(objectName);
+    }
+  }, [objectName, describedObjects, describeObject]);
 
   // Get object basic info from available objects
   const objectInfo = useMemo(
@@ -63,6 +85,10 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
 
   // Get detailed describe if available
   const objectDescribe = describedObjects.get(objectName);
+
+  // Get selected fields for this object
+  const selectedFields = selectedFieldsByObject.get(objectName) ?? new Set<string>();
+  const selectedCount = selectedFields.size;
 
   // Check if object is in ERD selection
   const isInERD = selectedObjectNames.includes(objectName);
@@ -197,17 +223,13 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold">
                 Fields ({objectDescribe.fields.length})
+                {selectedCount > 0 && (
+                  <span className="ml-1.5 text-sf-blue">• {selectedCount} selected</span>
+                )}
               </span>
-              <div className="flex gap-1 text-xs">
-                <button
-                  onClick={() => setFieldSearch('')}
-                  className="text-sf-blue hover:underline"
-                >
-                  Clear
-                </button>
-              </div>
             </div>
-            <div className="relative">
+            {/* Search input */}
+            <div className="relative mb-2">
               <Input
                 type="text"
                 placeholder="Search fields..."
@@ -224,6 +246,28 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                 </button>
               )}
             </div>
+            {/* Quick action buttons */}
+            <div className="flex gap-1.5 text-xs">
+              <button
+                onClick={() => selectAllFields(objectName)}
+                className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
+              >
+                Select All
+              </button>
+              <button
+                onClick={() => clearFieldSelection(objectName)}
+                className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => selectOnlyLookups(objectName)}
+                className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text flex items-center gap-1"
+              >
+                <Link className="h-3 w-3" />
+                Lookups
+              </button>
+            </div>
           </div>
 
           {/* Field List */}
@@ -235,11 +279,17 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                 </div>
               ) : (
                 filteredFields.map((field) => (
-                  <div
+                  <label
                     key={field.name}
-                    className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50"
+                    className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer block"
                   >
                     <div className="flex items-center gap-2">
+                      {/* Checkbox for field selection */}
+                      <Checkbox
+                        checked={selectedFields.has(field.name)}
+                        onCheckedChange={() => toggleFieldSelection(objectName, field.name)}
+                        className="shrink-0"
+                      />
                       <span className="text-gray-400">{getFieldTypeIcon(field.type)}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -273,7 +323,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                         )}
                       </div>
                     </div>
-                  </div>
+                  </label>
                 ))
               )}
             </div>
@@ -320,20 +370,30 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
           )}
         </>
       ) : (
-        /* Loading state - object not yet described */
+        /* Loading state - auto-fetching fields */
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center px-4">
-            <p className="text-sm text-sf-text-muted mb-3">
-              Field details not yet loaded
-            </p>
-            <Button
-              variant="sf"
-              size="sm"
-              onClick={() => addObject(objectName)}
-              disabled={isInERD}
-            >
-              {isInERD ? 'Already in Diagram' : 'Load Details'}
-            </Button>
+            {isLoadingDescribe ? (
+              <>
+                <Loader2 className="h-6 w-6 animate-spin text-sf-blue mx-auto mb-2" />
+                <p className="text-sm text-sf-text-muted">
+                  Loading fields...
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-sf-text-muted mb-3">
+                  Failed to load field details
+                </p>
+                <Button
+                  variant="sf"
+                  size="sm"
+                  onClick={() => describeObject(objectName)}
+                >
+                  Retry
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
