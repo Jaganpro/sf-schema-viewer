@@ -235,7 +235,7 @@ export default function SchemaFlow() {
         {/* Legend with toggle */}
         <Panel position="bottom-right">
           {showLegend ? (
-            <div className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden min-w-[180px]">
               {/* Header with close button */}
               <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
                 <h4 className="m-0 text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold">
@@ -250,44 +250,77 @@ export default function SchemaFlow() {
                 </button>
               </div>
               {/* Legend content */}
-              <div className="px-3 py-2.5 space-y-2">
+              <div className="px-3 py-2.5 space-y-3">
                 {/* Relationship lines */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs text-sf-text">
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
                     <span
-                      className="w-6 h-0.5"
+                      className="w-6 h-0.5 flex-shrink-0"
                       style={{
                         background: 'repeating-linear-gradient(90deg, #0176D3 0px, #0176D3 4px, transparent 4px, transparent 8px)',
                       }}
                     />
-                    <span>Lookup</span>
+                    <span>Lookup Relationship</span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-sf-text">
-                    <span className="w-6 h-0.5 bg-sf-purple" />
-                    <span>Master-Detail</span>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <span className="w-6 h-0.5 bg-sf-purple flex-shrink-0" />
+                    <span>Master-Detail Relationship</span>
                   </div>
                 </div>
-                {/* Object types */}
-                <div className="border-t border-gray-100 pt-2">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Badge variant="standard">Standard</Badge>
-                    <Badge variant="custom">Custom</Badge>
-                    <Badge variant="namespace">pkg</Badge>
+
+                {/* Primary object types */}
+                <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="standard" className="flex-shrink-0">Standard</Badge>
+                    <span>Standard Objects</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1">
-                    <Badge variant="feed">Feed</Badge>
-                    <Badge variant="share">Share</Badge>
-                    <Badge variant="history">History</Badge>
-                    <Badge variant="changeEvent">CDC</Badge>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="custom" className="flex-shrink-0">Custom</Badge>
+                    <span>Custom Objects</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1 mt-1">
-                    <Badge variant="platformEvent">Event</Badge>
-                    <Badge variant="externalObject">External</Badge>
-                    <Badge variant="customMetadata">Metadata</Badge>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="namespace" className="flex-shrink-0">pkg</Badge>
+                    <span>Managed Package</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1 mt-1">
-                    <Badge variant="bigObject">Big</Badge>
-                    <Badge variant="tag">Tag</Badge>
+                </div>
+
+                {/* System object types */}
+                <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="feed" className="flex-shrink-0">Feed</Badge>
+                    <span>Feed Objects</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="share" className="flex-shrink-0">Share</Badge>
+                    <span>Share Objects</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="history" className="flex-shrink-0">History</Badge>
+                    <span>History Objects</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="changeEvent" className="flex-shrink-0">CDC</Badge>
+                    <span>Change Events</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="platformEvent" className="flex-shrink-0">Event</Badge>
+                    <span>Platform Events</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="externalObject" className="flex-shrink-0">External</Badge>
+                    <span>External Objects</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="customMetadata" className="flex-shrink-0">MDT</Badge>
+                    <span>Custom Metadata</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="bigObject" className="flex-shrink-0">Big</Badge>
+                    <span>Big Objects</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                    <Badge variant="tag" className="flex-shrink-0">Tag</Badge>
+                    <span>Tag Objects</span>
                   </div>
                 </div>
               </div>
