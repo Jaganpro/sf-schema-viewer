@@ -87,6 +87,30 @@ export function transformToFlowElements(
     }
   }
 
+  // Group edges by source-target pair to add index info for offset calculation
+  // This allows multiple edges between the same nodes to fan out visually
+  const edgeGroups = new Map<string, Edge<RelationshipEdgeData>[]>();
+  for (const edge of edges) {
+    const groupKey = `${edge.source}-${edge.target}`;
+    if (!edgeGroups.has(groupKey)) {
+      edgeGroups.set(groupKey, []);
+    }
+    edgeGroups.get(groupKey)!.push(edge);
+  }
+
+  // Add edgeIndex and totalEdges to each edge's data for offset calculation
+  for (const [, group] of edgeGroups) {
+    // Sort alphabetically by fieldName for consistent ordering
+    group.sort((a, b) => (a.data?.fieldName ?? '').localeCompare(b.data?.fieldName ?? ''));
+
+    group.forEach((edge, index) => {
+      if (edge.data) {
+        edge.data.edgeIndex = index;
+        edge.data.totalEdges = group.length;
+      }
+    });
+  }
+
   return { nodes, edges };
 }
 

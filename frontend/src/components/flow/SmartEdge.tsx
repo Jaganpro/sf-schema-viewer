@@ -21,6 +21,9 @@ export interface SmartEdgeData {
   targetObject: string;
   sourceCardinality?: string;
   targetCardinality?: string;
+  // For multiple edges between same nodes - enables visual offset
+  edgeIndex?: number;      // Position in group (0, 1, 2...)
+  totalEdges?: number;     // Total edges in this source-target group
   [key: string]: unknown;
 }
 
@@ -41,6 +44,10 @@ function SmartEdge({
   // Get actual node data for position calculations
   const sourceNode = getNode(source);
   const targetNode = getNode(target);
+
+  // Extract edge grouping info for offset calculation
+  const edgeIndex = data?.edgeIndex ?? 0;
+  const totalEdges = data?.totalEdges ?? 1;
 
   // Memoize expensive position calculations
   // Only recalculates when node positions or dimensions change
@@ -113,6 +120,24 @@ function SmartEdge({
       }
     }
 
+    // Calculate perpendicular offset for multiple edges between same nodes
+    // This creates a fan effect where edges spread apart visually
+    const EDGE_SPACING = 25; // pixels between edges
+    const offsetAmount = totalEdges > 1
+      ? (edgeIndex - (totalEdges - 1) / 2) * EDGE_SPACING
+      : 0;
+
+    // Apply offset perpendicular to edge direction
+    // Horizontal edges: offset in Y direction
+    // Vertical edges: offset in X direction
+    if (horizontalDominant) {
+      sourceY += offsetAmount;
+      targetY += offsetAmount;
+    } else {
+      sourceX += offsetAmount;
+      targetX += offsetAmount;
+    }
+
     const [edgePath, labelX, labelY] = getBezierPath({
       sourceX,
       sourceY,
@@ -158,6 +183,8 @@ function SmartEdge({
     targetNode?.position.y,
     targetNode?.measured?.width,
     targetNode?.measured?.height,
+    edgeIndex,
+    totalEdges,
   ]);
 
   // Early return if nodes not found
