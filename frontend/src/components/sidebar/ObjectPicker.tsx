@@ -385,16 +385,19 @@ export default function ObjectPicker() {
                 label="Standard"
                 active={classificationFilters.standard}
                 onClick={() => toggleClassificationFilter('standard')}
+                badgeVariant="standard"
               />
               <FilterChip
                 label="Custom"
                 active={classificationFilters.custom}
                 onClick={() => toggleClassificationFilter('custom')}
+                badgeVariant="custom"
               />
               <FilterChip
                 label="Packaged"
                 active={classificationFilters.packaged}
                 onClick={() => toggleClassificationFilter('packaged')}
+                badgeVariant="namespace"
               />
             </div>
 

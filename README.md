@@ -58,7 +58,7 @@ Intelligent badge system to quickly identify object types at a glance:
 |:-----:|------|-----------------|
 | 🔵 `Standard` | Salesforce-provided | Account, Contact, Opportunity |
 | 🟣 `Custom` | Org-created | Invoice__c, Project__c |
-| 🟪 `[npsp]` | Managed package | npsp__General_Accounting_Unit__c |
+| 🩷 `[npsp]` | Managed package | npsp__General_Accounting_Unit__c |
 
 **System Object Type Badges** (hidden by default for cleaner views):
 

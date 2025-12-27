@@ -27,8 +27,8 @@ const badgeVariants = cva(
         // Capability indicator badges (compact, icon-style)
         capability: 'border-gray-300 bg-gray-50 text-gray-600 text-[11px] px-1.5 py-0 rounded font-medium',
         capabilityActive: 'border-sf-blue/30 bg-sf-blue/10 text-sf-blue text-[11px] px-1.5 py-0 rounded font-medium',
-        // Namespace badge for managed package objects
-        namespace: 'border-transparent bg-indigo-100 text-indigo-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
+        // Namespace badge for managed package objects (pink - distinct from standard/custom)
+        namespace: 'border-transparent bg-pink-100 text-pink-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
       },
     },
     defaultVariants: {
