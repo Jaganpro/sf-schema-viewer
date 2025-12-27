@@ -7,8 +7,6 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Search,
-  ChevronDown,
-  ChevronRight,
   Zap,
   ArrowRight,
   Loader2,
@@ -19,10 +17,10 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { cn, getFieldTypeIcon } from '@/lib/utils';
 import { useAppStore } from '../../store';
-import type { FieldInfo } from '../../types/schema';
-import { getFieldTypeIcon } from '@/lib/utils';
+import type { FieldInfo, RelationshipInfo } from '../../types/schema';
 
 interface ObjectDetailPanelProps {
   objectName: string;
@@ -68,7 +66,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     selectOnlyLookups,
   } = useAppStore();
   const [fieldSearch, setFieldSearch] = useState('');
-  const [showRelationships, setShowRelationships] = useState(false);
+  const [relSearch, setRelSearch] = useState('');
+  const [selectedRels, setSelectedRels] = useState<Set<string>>(new Set());
 
   // Auto-fetch when panel opens for an undescribed object
   useEffect(() => {
@@ -106,6 +105,46 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     );
   }, [objectDescribe?.fields, fieldSearch]);
 
+  // Filter child relationships based on search
+  const filteredRelationships = useMemo(() => {
+    if (!objectDescribe?.child_relationships) return [];
+    const term = relSearch.toLowerCase();
+    if (!term) return objectDescribe.child_relationships;
+    return objectDescribe.child_relationships.filter(
+      (rel) =>
+        rel.child_object.toLowerCase().includes(term) ||
+        rel.field.toLowerCase().includes(term) ||
+        rel.relationship_name?.toLowerCase().includes(term)
+    );
+  }, [objectDescribe?.child_relationships, relSearch]);
+
+  // Helper to generate unique key for a relationship
+  const getRelKey = (rel: RelationshipInfo) => `${rel.child_object}.${rel.field}`;
+
+  // Toggle relationship selection
+  const toggleRelSelection = (key: string) => {
+    setSelectedRels((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  // Select all relationships
+  const selectAllRels = () => {
+    if (objectDescribe?.child_relationships) {
+      setSelectedRels(new Set(objectDescribe.child_relationships.map(getRelKey)));
+    }
+  };
+
+  // Clear relationship selection
+  const clearRelSelection = () => {
+    setSelectedRels(new Set());
+  };
 
   if (!objectInfo) {
     return (
@@ -216,159 +255,221 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
         </div>
       )}
 
-      {/* Fields Section */}
+      {/* Tabbed Content: Fields and Child Relationships */}
       {objectDescribe ? (
-        <>
-          <div className="px-4 py-3 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold">
-                Fields ({objectDescribe.fields.length})
-                {selectedCount > 0 && (
-                  <span className="ml-1.5 text-sf-blue">• {selectedCount} selected</span>
-                )}
-              </span>
-            </div>
-            {/* Search input */}
-            <div className="relative mb-2">
-              <Input
-                type="text"
-                placeholder="Search fields..."
-                value={fieldSearch}
-                onChange={(e) => setFieldSearch(e.target.value)}
-                className="h-8 text-xs pr-8"
-              />
-              {fieldSearch && (
-                <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-sf-text-muted hover:text-sf-text"
-                  onClick={() => setFieldSearch('')}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-            {/* Quick action buttons */}
-            <div className="flex gap-1.5 text-xs">
-              <button
-                onClick={() => selectAllFields(objectName)}
-                className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
-              >
-                Select All
-              </button>
-              <button
-                onClick={() => clearFieldSelection(objectName)}
-                className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
-              >
-                Clear
-              </button>
-              <button
-                onClick={() => selectOnlyLookups(objectName)}
-                className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text flex items-center gap-1"
-              >
-                <Link className="h-3 w-3" />
-                Lookups
-              </button>
-            </div>
-          </div>
+        <Tabs defaultValue="fields" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="mx-4 mt-3 mb-0 grid w-[calc(100%-2rem)] grid-cols-2">
+            <TabsTrigger value="fields" className="text-xs">
+              Fields ({objectDescribe.fields.length})
+            </TabsTrigger>
+            <TabsTrigger value="relationships" className="text-xs">
+              Child Rels ({objectDescribe.child_relationships.length})
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Field List */}
-          <ScrollArea className="flex-1">
-            <div className="py-1">
-              {filteredFields.length === 0 ? (
-                <div className="px-4 py-4 text-center text-xs text-sf-text-muted">
-                  {fieldSearch ? 'No matching fields' : 'No fields'}
-                </div>
-              ) : (
-                filteredFields.map((field) => (
-                  <label
-                    key={field.name}
-                    className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer block"
+          {/* Fields Tab */}
+          <TabsContent value="fields" className="flex-1 flex flex-col min-h-0 mt-0">
+            <div className="px-4 py-3 border-b border-gray-100">
+              {/* Selected count */}
+              {selectedCount > 0 && (
+                <div className="text-xs text-sf-blue mb-2">{selectedCount} selected</div>
+              )}
+              {/* Search input */}
+              <div className="relative mb-2">
+                <Input
+                  type="text"
+                  placeholder="Search fields..."
+                  value={fieldSearch}
+                  onChange={(e) => setFieldSearch(e.target.value)}
+                  className="h-8 text-xs pr-8"
+                />
+                {fieldSearch && (
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-sf-text-muted hover:text-sf-text"
+                    onClick={() => setFieldSearch('')}
                   >
-                    <div className="flex items-center gap-2">
-                      {/* Checkbox for field selection */}
-                      <Checkbox
-                        checked={selectedFields.has(field.name)}
-                        onCheckedChange={() => toggleFieldSelection(objectName, field.name)}
-                        className="shrink-0"
-                      />
-                      <span className="text-gray-400">{getFieldTypeIcon(field.type)}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-sm text-sf-text truncate">{field.label}</span>
-                          {field.reference_to && field.reference_to.length > 0 && (
-                            <ArrowRight className="h-3 w-3 text-sf-blue shrink-0" />
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {/* Quick action buttons */}
+              <div className="flex gap-1.5 text-xs">
+                <button
+                  onClick={() => selectAllFields(objectName)}
+                  className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={() => clearFieldSelection(objectName)}
+                  className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={() => selectOnlyLookups(objectName)}
+                  className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text flex items-center gap-1"
+                >
+                  <Link className="h-3 w-3" />
+                  Lookups
+                </button>
+              </div>
+            </div>
+
+            {/* Field List */}
+            <ScrollArea className="flex-1">
+              <div className="py-1">
+                {filteredFields.length === 0 ? (
+                  <div className="px-4 py-4 text-center text-xs text-sf-text-muted">
+                    {fieldSearch ? 'No matching fields' : 'No fields'}
+                  </div>
+                ) : (
+                  filteredFields.map((field) => (
+                    <label
+                      key={field.name}
+                      className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer block"
+                    >
+                      <div className="flex items-center gap-2">
+                        {/* Checkbox for field selection */}
+                        <Checkbox
+                          checked={selectedFields.has(field.name)}
+                          onCheckedChange={() => toggleFieldSelection(objectName, field.name)}
+                          className="shrink-0"
+                        />
+                        <span className="text-gray-400">{getFieldTypeIcon(field.type)}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm text-sf-text truncate">{field.label}</span>
+                            {field.reference_to && field.reference_to.length > 0 && (
+                              <ArrowRight className="h-3 w-3 text-sf-blue shrink-0" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-sf-text-muted">
+                            <span className="font-mono">{field.name}</span>
+                            <span>•</span>
+                            <span>{formatFieldType(field)}</span>
+                          </div>
+                        </div>
+                        {/* Field badges */}
+                        <div className="flex gap-1 shrink-0">
+                          {!field.nillable && (
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-600">
+                              Req
+                            </span>
+                          )}
+                          {field.unique && (
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-purple-100 text-purple-600">
+                              Unique
+                            </span>
+                          )}
+                          {field.external_id && (
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-blue-100 text-blue-600">
+                              ExtId
+                            </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-sf-text-muted">
-                          <span className="font-mono">{field.name}</span>
-                          <span>•</span>
-                          <span>{formatFieldType(field)}</span>
-                        </div>
                       </div>
-                      {/* Field badges */}
-                      <div className="flex gap-1 shrink-0">
-                        {!field.nillable && (
-                          <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-600">
-                            Req
-                          </span>
-                        )}
-                        {field.unique && (
-                          <span className="text-[10px] px-1 py-0.5 rounded bg-purple-100 text-purple-600">
-                            Unique
-                          </span>
-                        )}
-                        {field.external_id && (
-                          <span className="text-[10px] px-1 py-0.5 rounded bg-blue-100 text-blue-600">
-                            ExtId
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </label>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-
-          {/* Relationships Section */}
-          {objectDescribe.child_relationships.length > 0 && (
-            <div className="border-t border-gray-200">
-              <button
-                onClick={() => setShowRelationships(!showRelationships)}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50"
-              >
-                <span className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold">
-                  Child Relationships ({objectDescribe.child_relationships.length})
-                </span>
-                {showRelationships ? (
-                  <ChevronDown className="h-4 w-4 text-sf-text-muted" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-sf-text-muted" />
+                    </label>
+                  ))
                 )}
-              </button>
-              {showRelationships && (
-                <div className="px-4 pb-3 max-h-40 overflow-y-auto">
-                  <div className="space-y-1">
-                    {objectDescribe.child_relationships.map((rel, i) => (
-                      <div
-                        key={`${rel.child_object}-${rel.field}-${i}`}
-                        className="text-xs text-sf-text py-1 flex items-center gap-2"
-                      >
-                        <span className="font-mono text-sf-text-muted">{rel.child_object}</span>
-                        <span className="text-sf-text-muted">→</span>
-                        <span className="font-mono">{rel.field}</span>
-                        {rel.cascade_delete && (
-                          <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">
-                            MD
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Child Relationships Tab */}
+          <TabsContent value="relationships" className="flex-1 flex flex-col min-h-0 mt-0">
+            <div className="px-4 py-3 border-b border-gray-100">
+              {/* Selected count */}
+              {selectedRels.size > 0 && (
+                <div className="text-xs text-sf-blue mb-2">{selectedRels.size} selected</div>
               )}
+              {/* Search input */}
+              <div className="relative mb-2">
+                <Input
+                  type="text"
+                  placeholder="Search relationships..."
+                  value={relSearch}
+                  onChange={(e) => setRelSearch(e.target.value)}
+                  className="h-8 text-xs pr-8"
+                />
+                {relSearch && (
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-sf-text-muted hover:text-sf-text"
+                    onClick={() => setRelSearch('')}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {/* Quick action buttons */}
+              <div className="flex gap-1.5 text-xs">
+                <button
+                  onClick={selectAllRels}
+                  className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={clearRelSelection}
+                  className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
-          )}
-        </>
+
+            {/* Relationship List */}
+            <ScrollArea className="flex-1">
+              <div className="py-1">
+                {filteredRelationships.length === 0 ? (
+                  <div className="px-4 py-4 text-center text-xs text-sf-text-muted">
+                    {relSearch ? 'No matching relationships' : 'No child relationships'}
+                  </div>
+                ) : (
+                  filteredRelationships.map((rel) => {
+                    const relKey = getRelKey(rel);
+                    return (
+                      <label
+                        key={relKey}
+                        className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer block"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedRels.has(relKey)}
+                            onCheckedChange={() => toggleRelSelection(relKey)}
+                            className="shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm text-sf-text font-mono truncate">
+                                {rel.child_object}
+                              </span>
+                              <span className="text-sf-text-muted">.</span>
+                              <span className="text-sm text-sf-text-muted font-mono truncate">
+                                {rel.field}
+                              </span>
+                            </div>
+                            {rel.relationship_name && (
+                              <div className="text-xs text-sf-text-muted mt-0.5">
+                                via {rel.relationship_name}
+                              </div>
+                            )}
+                          </div>
+                          <Badge
+                            variant={rel.cascade_delete ? 'destructive' : 'outline'}
+                            className="shrink-0 text-[10px]"
+                          >
+                            {rel.cascade_delete ? 'MD' : 'Lookup'}
+                          </Badge>
+                        </div>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
       ) : (
         /* Loading state - auto-fetching fields */
         <div className="flex-1 flex items-center justify-center">
