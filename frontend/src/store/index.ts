@@ -35,6 +35,9 @@ interface AppState {
   namespaceFilter: 'all' | 'standard' | 'custom';
   searchTerm: string;
 
+  // Error state
+  error: string | null;
+
   // Actions
   checkAuth: () => Promise<void>;
   logout: () => Promise<void>;
@@ -49,6 +52,8 @@ interface AppState {
   toggleNodeCollapse: (nodeId: string) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
+  setError: (error: string | null) => void;
+  clearError: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -65,6 +70,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarOpen: true,
   namespaceFilter: 'all',
   searchTerm: '',
+  error: null,
 
   // Actions
   checkAuth: async () => {
@@ -90,13 +96,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   loadObjects: async () => {
-    set({ isLoadingObjects: true });
+    set({ isLoadingObjects: true, error: null });
     try {
       const objects = await api.schema.listObjects();
       set({ availableObjects: objects, isLoadingObjects: false });
     } catch (error) {
-      console.error('Failed to load objects:', error);
-      set({ isLoadingObjects: false });
+      const message = error instanceof Error ? error.message : 'Failed to load objects';
+      set({ isLoadingObjects: false, error: message });
     }
   },
 
@@ -107,7 +113,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const toDescribe = names.filter((name) => !describedObjects.has(name));
 
     if (toDescribe.length > 0) {
-      set({ isLoadingDescribe: true });
+      set({ isLoadingDescribe: true, error: null });
       try {
         const response = await api.schema.describeObjects(toDescribe);
         const newDescribed = new Map(describedObjects);
@@ -116,7 +122,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
         set({ describedObjects: newDescribed });
       } catch (error) {
-        console.error('Failed to describe objects:', error);
+        const message = error instanceof Error ? error.message : 'Failed to describe objects';
+        set({ error: message });
       }
       set({ isLoadingDescribe: false });
     }
@@ -136,15 +143,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // Describe if not already described
     if (!describedObjects.has(name)) {
-      set({ isLoadingDescribe: true });
+      set({ isLoadingDescribe: true, error: null });
       try {
         const describe = await api.schema.describeObject(name);
         const newDescribed = new Map(describedObjects);
         newDescribed.set(name, describe);
         set({ describedObjects: newDescribed });
       } catch (error) {
-        console.error(`Failed to describe ${name}:`, error);
-        set({ isLoadingDescribe: false });
+        const message = error instanceof Error ? error.message : `Failed to describe ${name}`;
+        set({ isLoadingDescribe: false, error: message });
         return;
       }
       set({ isLoadingDescribe: false });
@@ -259,4 +266,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
+  setError: (error) => set({ error }),
+  clearError: () => set({ error: null }),
 }));

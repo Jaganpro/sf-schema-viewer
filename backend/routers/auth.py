@@ -107,7 +107,7 @@ async def callback(code: str, state: str, response: Response):
         value=session_id,
         httponly=True,
         samesite="lax",
-        secure=False,  # Set to True in production with HTTPS
+        secure=settings.IS_PRODUCTION,
         max_age=86400 * 7,  # 7 days
     )
     return redirect
@@ -144,3 +144,56 @@ async def logout(response: Response, session_id: str | None = Cookie(default=Non
 
     response.delete_cookie("session_id")
     return {"message": "Logged out successfully"}
+
+
+@router.post("/refresh")
+async def refresh_token(session_id: str | None = Cookie(default=None)):
+    """Refresh the Salesforce access token using the refresh token.
+
+    This endpoint should be called when API requests start failing with 401.
+    It uses the stored refresh_token to get a new access_token from Salesforce.
+    """
+    if not session_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    session = session_store.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=401, detail="Session expired or invalid")
+
+    if not session.refresh_token:
+        raise HTTPException(
+            status_code=401,
+            detail="No refresh token available. Please log in again.",
+        )
+
+    # Request new tokens from Salesforce
+    async with httpx.AsyncClient() as client:
+        token_response = await client.post(
+            settings.SF_TOKEN_URL,
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": session.refresh_token,
+                "client_id": settings.SF_CLIENT_ID,
+                "client_secret": settings.SF_CLIENT_SECRET,
+            },
+        )
+
+    if token_response.status_code != 200:
+        # Refresh token is invalid or expired
+        session_store.delete_session(session_id)
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token expired. Please log in again.",
+        )
+
+    tokens = token_response.json()
+
+    # Update session with new tokens
+    # Note: Salesforce may or may not return a new refresh_token
+    session_store.update_tokens(
+        session_id,
+        access_token=tokens["access_token"],
+        refresh_token=tokens.get("refresh_token"),
+    )
+
+    return {"message": "Token refreshed successfully"}

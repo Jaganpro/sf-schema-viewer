@@ -11,6 +11,25 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core libraries
+          'react-vendor': ['react', 'react-dom'],
+          // React Flow and layout libraries
+          'flow-vendor': ['@xyflow/react', '@dagrejs/dagre'],
+          // Radix UI components
+          'ui-vendor': [
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-scroll-area',
+            '@radix-ui/react-select',
+            '@radix-ui/react-slot',
+          ],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

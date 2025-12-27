@@ -1,7 +1,13 @@
 """Schema API routes for Salesforce object metadata."""
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException
+from fastapi import APIRouter, Cookie, Depends
+from simple_salesforce.exceptions import SalesforceError
 
+from exceptions import (
+    InvalidObjectError,
+    SalesforceAPIError,
+    SessionNotFoundError,
+)
 from models.schema import (
     BatchDescribeRequest,
     BatchDescribeResponse,
@@ -17,11 +23,11 @@ router = APIRouter(prefix="/api", tags=["schema"])
 def get_current_session(session_id: str | None = Cookie(default=None)) -> Session:
     """Dependency to get current authenticated session."""
     if not session_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise SessionNotFoundError()
 
     session = session_store.get_session(session_id)
     if not session:
-        raise HTTPException(status_code=401, detail="Session expired or invalid")
+        raise SessionNotFoundError()
 
     return session
 
@@ -42,8 +48,10 @@ async def list_objects(sf: SalesforceService = Depends(get_sf_service)):
     """
     try:
         return sf.list_objects()
+    except SalesforceError as e:
+        raise SalesforceAPIError(detail=f"Failed to list objects: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list objects: {str(e)}")
+        raise SalesforceAPIError(detail=f"Unexpected error listing objects: {str(e)}")
 
 
 @router.get("/objects/{object_name}/describe", response_model=ObjectDescribe)
@@ -58,11 +66,13 @@ async def describe_object(
     """
     try:
         return sf.describe_object(object_name)
+    except SalesforceError as e:
+        # Check if it's a "not found" error
+        if "NOT_FOUND" in str(e) or "INVALID_TYPE" in str(e):
+            raise InvalidObjectError(object_name)
+        raise SalesforceAPIError(detail=f"Failed to describe {object_name}: {str(e)}")
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to describe {object_name}: {str(e)}",
-        )
+        raise SalesforceAPIError(detail=f"Unexpected error describing {object_name}: {str(e)}")
 
 
 @router.post("/objects/describe", response_model=BatchDescribeResponse)
@@ -81,8 +91,7 @@ async def describe_objects(
             objects=objects,
             errors=errors if errors else None,
         )
+    except SalesforceError as e:
+        raise SalesforceAPIError(detail=f"Failed to describe objects: {str(e)}")
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to describe objects: {str(e)}",
-        )
+        raise SalesforceAPIError(detail=f"Unexpected error describing objects: {str(e)}")

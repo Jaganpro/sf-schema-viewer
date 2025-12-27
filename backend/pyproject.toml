@@ -5,6 +5,7 @@ description = "FastAPI backend for Salesforce Schema Viewer"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "cachetools>=5.3.0",
     "fastapi>=0.127.1",
     "httpx>=0.28.1",
     "python-dotenv>=1.2.1",

@@ -1,14 +1,24 @@
 """Salesforce API service using simple-salesforce."""
 
+from threading import Lock
+
+from cachetools import TTLCache
 from simple_salesforce import Salesforce
 from simple_salesforce.exceptions import SalesforceError
 
+from config import settings
 from models.schema import (
     FieldInfo,
     ObjectBasicInfo,
     ObjectDescribe,
     RelationshipInfo,
 )
+
+# Global cache for list_objects results
+# Key: instance_url, Value: list of ObjectBasicInfo
+# TTL: 5 minutes (300 seconds)
+_objects_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
+_cache_lock = Lock()
 
 
 class SalesforceService:
@@ -22,13 +32,27 @@ class SalesforceService:
             instance_url: Salesforce instance URL (e.g., https://na1.salesforce.com)
         """
         self.sf = Salesforce(instance_url=instance_url, session_id=access_token)
+        self.instance_url = instance_url
 
-    def list_objects(self) -> list[ObjectBasicInfo]:
+    def list_objects(self, use_cache: bool = True) -> list[ObjectBasicInfo]:
         """Get list of all sObjects in the org (Global Describe).
+
+        Args:
+            use_cache: Whether to use cached results (default True).
+                       Pass False to force refresh from Salesforce.
 
         Returns:
             List of basic object information
         """
+        cache_key = self.instance_url
+
+        # Check cache first
+        if use_cache:
+            with _cache_lock:
+                if cache_key in _objects_cache:
+                    return _objects_cache[cache_key]
+
+        # Fetch from Salesforce
         describe = self.sf.describe()
         objects = []
 
@@ -47,6 +71,10 @@ class SalesforceService:
                 )
             )
 
+        # Store in cache
+        with _cache_lock:
+            _objects_cache[cache_key] = objects
+
         return objects
 
     def describe_object(self, object_name: str) -> ObjectDescribe:
@@ -60,7 +88,17 @@ class SalesforceService:
         """
         sobject = getattr(self.sf, object_name)
         describe = sobject.describe()
+        return self._transform_describe(describe)
 
+    def _transform_describe(self, describe: dict) -> ObjectDescribe:
+        """Transform a raw Salesforce describe response to ObjectDescribe model.
+
+        Args:
+            describe: Raw describe response from Salesforce API
+
+        Returns:
+            Transformed ObjectDescribe model
+        """
         # Transform fields
         fields = []
         for f in describe["fields"]:
@@ -115,7 +153,10 @@ class SalesforceService:
     def describe_objects(
         self, object_names: list[str]
     ) -> tuple[list[ObjectDescribe], dict[str, str]]:
-        """Describe multiple objects.
+        """Describe multiple objects using Composite API for better performance.
+
+        Uses Salesforce Composite API to batch requests (up to 25 per call),
+        reducing API calls from N to ceil(N/25).
 
         Args:
             object_names: List of object API names
@@ -123,15 +164,59 @@ class SalesforceService:
         Returns:
             Tuple of (successful describes, errors dict mapping name to error message)
         """
+        if not object_names:
+            return [], {}
+
         results = []
         errors = {}
+        batch_size = 25  # Salesforce Composite API limit
 
-        for name in object_names:
+        # Process in batches of 25
+        for i in range(0, len(object_names), batch_size):
+            batch = object_names[i : i + batch_size]
+
+            # Build composite request
+            composite_request = {
+                "compositeRequest": [
+                    {
+                        "method": "GET",
+                        "url": f"/services/data/{settings.SF_API_VERSION}/sobjects/{name}/describe",
+                        "referenceId": name,
+                    }
+                    for name in batch
+                ]
+            }
+
             try:
-                results.append(self.describe_object(name))
-            except SalesforceError as e:
-                errors[name] = str(e)
+                # Use simple-salesforce's restful method for composite requests
+                response = self.sf.restful(
+                    "composite",
+                    method="POST",
+                    json=composite_request,
+                )
+
+                # Process each response in the composite result
+                for result in response.get("compositeResponse", []):
+                    ref_id = result["referenceId"]
+                    if result["httpStatusCode"] == 200:
+                        results.append(self._transform_describe(result["body"]))
+                    else:
+                        # Extract error message
+                        error_body = result.get("body", [])
+                        if isinstance(error_body, list) and error_body:
+                            error_msg = error_body[0].get("message", "Unknown error")
+                        else:
+                            error_msg = str(error_body)
+                        errors[ref_id] = error_msg
+
             except Exception as e:
-                errors[name] = f"Unexpected error: {str(e)}"
+                # Fallback to sequential requests if composite fails
+                for name in batch:
+                    try:
+                        results.append(self.describe_object(name))
+                    except SalesforceError as se:
+                        errors[name] = str(se)
+                    except Exception as inner_e:
+                        errors[name] = f"Unexpected error: {str(inner_e)}"
 
         return results, errors

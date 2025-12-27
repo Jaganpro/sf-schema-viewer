@@ -4,7 +4,7 @@ For production, replace with Redis or database-backed sessions.
 """
 
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
 
@@ -50,6 +50,8 @@ class SessionStore:
     ) -> str:
         """Create a new session and return the session ID."""
         session_id = secrets.token_urlsafe(32)
+        # Session expires in 7 days (matches cookie max_age)
+        expires_at = datetime.now() + timedelta(days=7)
         self._sessions[session_id] = Session(
             session_id=session_id,
             access_token=access_token,
@@ -60,12 +62,19 @@ class SessionStore:
             display_name=display_name,
             email=email,
             org_id=org_id,
+            expires_at=expires_at,
         )
         return session_id
 
     def get_session(self, session_id: str) -> Session | None:
-        """Get session by ID."""
-        return self._sessions.get(session_id)
+        """Get session by ID. Returns None if session expired."""
+        session = self._sessions.get(session_id)
+        if session:
+            # Check if session has expired
+            if session.expires_at and datetime.now() > session.expires_at:
+                self.delete_session(session_id)
+                return None
+        return session
 
     def delete_session(self, session_id: str) -> bool:
         """Delete a session. Returns True if session existed."""
@@ -98,6 +107,17 @@ class SessionStore:
             del self._pending_states[state]
             return True
         return False
+
+    def cleanup_expired(self) -> int:
+        """Remove all expired sessions. Returns count of removed sessions."""
+        now = datetime.now()
+        expired = [
+            sid for sid, session in self._sessions.items()
+            if session.expires_at and now > session.expires_at
+        ]
+        for sid in expired:
+            del self._sessions[sid]
+        return len(expired)
 
 
 # Global session store instance

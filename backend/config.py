@@ -21,7 +21,12 @@ class Settings:
     # Salesforce OAuth endpoints
     SF_AUTH_URL: str = "https://login.salesforce.com/services/oauth2/authorize"
     SF_TOKEN_URL: str = "https://login.salesforce.com/services/oauth2/token"
-    SF_API_VERSION: str = "v62.0"
+    SF_API_VERSION: str = os.getenv("SF_API_VERSION", "v62.0")
+
+    @property
+    def IS_PRODUCTION(self) -> bool:
+        """Determine if running in production based on FRONTEND_URL."""
+        return self.FRONTEND_URL.startswith("https://")
 
 
 settings = Settings()

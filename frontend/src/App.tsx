@@ -7,6 +7,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { Layout } from './components/layout';
 import { ObjectPicker } from './components/sidebar';
 import { SchemaFlow } from './components/flow';
+import { ErrorBanner } from './components/ui/ErrorBanner';
 import { useAppStore } from './store';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
 
   return (
     <ReactFlowProvider>
+      <ErrorBanner />
       <Layout sidebar={<ObjectPicker />}>
         <SchemaFlow />
       </Layout>

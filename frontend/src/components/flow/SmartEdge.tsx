@@ -3,7 +3,7 @@
  * based on their relative positions.
  */
 
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import {
   getBezierPath,
   EdgeLabelRenderer,
@@ -42,104 +42,133 @@ function SmartEdge({
   const sourceNode = getNode(source);
   const targetNode = getNode(target);
 
-  if (!sourceNode || !targetNode) {
+  // Memoize expensive position calculations
+  // Only recalculates when node positions or dimensions change
+  const edgeGeometry = useMemo(() => {
+    if (!sourceNode || !targetNode) {
+      return null;
+    }
+
+    // Get node positions and dimensions
+    const sourceWidth = sourceNode.measured?.width ?? 260;
+    const sourceHeight = sourceNode.measured?.height ?? 200;
+    const targetWidth = targetNode.measured?.width ?? 260;
+    const targetHeight = targetNode.measured?.height ?? 200;
+
+    // Calculate center points
+    const sourceCenterX = sourceNode.position.x + sourceWidth / 2;
+    const sourceCenterY = sourceNode.position.y + sourceHeight / 2;
+    const targetCenterX = targetNode.position.x + targetWidth / 2;
+    const targetCenterY = targetNode.position.y + targetHeight / 2;
+
+    // Calculate direction from source to target
+    const dx = targetCenterX - sourceCenterX;
+    const dy = targetCenterY - sourceCenterY;
+
+    // Determine optimal connection sides based on relative positions
+    const horizontalDominant = Math.abs(dx) > Math.abs(dy) * 0.5;
+
+    let sourceX: number, sourceY: number, targetX: number, targetY: number;
+    let sourcePos: Position, targetPos: Position;
+
+    if (horizontalDominant) {
+      if (dx > 0) {
+        // Target is to the RIGHT of source
+        sourcePos = Position.Right;
+        sourceX = sourceNode.position.x + sourceWidth;
+        sourceY = sourceCenterY;
+
+        targetPos = Position.Left;
+        targetX = targetNode.position.x;
+        targetY = targetCenterY;
+      } else {
+        // Target is to the LEFT of source
+        sourcePos = Position.Left;
+        sourceX = sourceNode.position.x;
+        sourceY = sourceCenterY;
+
+        targetPos = Position.Right;
+        targetX = targetNode.position.x + targetWidth;
+        targetY = targetCenterY;
+      }
+    } else {
+      if (dy > 0) {
+        // Target is BELOW source
+        sourcePos = Position.Bottom;
+        sourceX = sourceCenterX;
+        sourceY = sourceNode.position.y + sourceHeight;
+
+        targetPos = Position.Top;
+        targetX = targetCenterX;
+        targetY = targetNode.position.y;
+      } else {
+        // Target is ABOVE source
+        sourcePos = Position.Top;
+        sourceX = sourceCenterX;
+        sourceY = sourceNode.position.y;
+
+        targetPos = Position.Bottom;
+        targetX = targetCenterX;
+        targetY = targetNode.position.y + targetHeight;
+      }
+    }
+
+    const [edgePath, labelX, labelY] = getBezierPath({
+      sourceX,
+      sourceY,
+      sourcePosition: sourcePos,
+      targetX,
+      targetY,
+      targetPosition: targetPos,
+    });
+
+    // Calculate cardinality label positions (offset from connection points)
+    const cardinalityOffset = 25;
+    let sourceCardX = sourceX;
+    let sourceCardY = sourceY;
+    let targetCardX = targetX;
+    let targetCardY = targetY;
+
+    // Offset based on which side the connection is on
+    if (sourcePos === Position.Right) sourceCardX += cardinalityOffset;
+    if (sourcePos === Position.Left) sourceCardX -= cardinalityOffset;
+    if (sourcePos === Position.Top) sourceCardY -= cardinalityOffset;
+    if (sourcePos === Position.Bottom) sourceCardY += cardinalityOffset;
+
+    if (targetPos === Position.Right) targetCardX += cardinalityOffset;
+    if (targetPos === Position.Left) targetCardX -= cardinalityOffset;
+    if (targetPos === Position.Top) targetCardY -= cardinalityOffset;
+    if (targetPos === Position.Bottom) targetCardY += cardinalityOffset;
+
+    return {
+      edgePath,
+      labelX,
+      labelY,
+      sourceCardX,
+      sourceCardY,
+      targetCardX,
+      targetCardY,
+    };
+  }, [
+    sourceNode?.position.x,
+    sourceNode?.position.y,
+    sourceNode?.measured?.width,
+    sourceNode?.measured?.height,
+    targetNode?.position.x,
+    targetNode?.position.y,
+    targetNode?.measured?.width,
+    targetNode?.measured?.height,
+  ]);
+
+  // Early return if nodes not found
+  if (!edgeGeometry) {
     return null;
   }
 
-  // Get node positions and dimensions
-  const sourceWidth = sourceNode.measured?.width ?? 260;
-  const sourceHeight = sourceNode.measured?.height ?? 200;
-  const targetWidth = targetNode.measured?.width ?? 260;
-  const targetHeight = targetNode.measured?.height ?? 200;
-
-  // Calculate center points
-  const sourceCenterX = sourceNode.position.x + sourceWidth / 2;
-  const sourceCenterY = sourceNode.position.y + sourceHeight / 2;
-  const targetCenterX = targetNode.position.x + targetWidth / 2;
-  const targetCenterY = targetNode.position.y + targetHeight / 2;
-
-  // Calculate direction from source to target
-  const dx = targetCenterX - sourceCenterX;
-  const dy = targetCenterY - sourceCenterY;
-
-  // Determine optimal connection sides based on relative positions
-  const horizontalDominant = Math.abs(dx) > Math.abs(dy) * 0.5;
-
-  let sourceX: number, sourceY: number, targetX: number, targetY: number;
-  let sourcePos: Position, targetPos: Position;
-
-  if (horizontalDominant) {
-    if (dx > 0) {
-      // Target is to the RIGHT of source
-      sourcePos = Position.Right;
-      sourceX = sourceNode.position.x + sourceWidth;
-      sourceY = sourceCenterY;
-
-      targetPos = Position.Left;
-      targetX = targetNode.position.x;
-      targetY = targetCenterY;
-    } else {
-      // Target is to the LEFT of source
-      sourcePos = Position.Left;
-      sourceX = sourceNode.position.x;
-      sourceY = sourceCenterY;
-
-      targetPos = Position.Right;
-      targetX = targetNode.position.x + targetWidth;
-      targetY = targetCenterY;
-    }
-  } else {
-    if (dy > 0) {
-      // Target is BELOW source
-      sourcePos = Position.Bottom;
-      sourceX = sourceCenterX;
-      sourceY = sourceNode.position.y + sourceHeight;
-
-      targetPos = Position.Top;
-      targetX = targetCenterX;
-      targetY = targetNode.position.y;
-    } else {
-      // Target is ABOVE source
-      sourcePos = Position.Top;
-      sourceX = sourceCenterX;
-      sourceY = sourceNode.position.y;
-
-      targetPos = Position.Bottom;
-      targetX = targetCenterX;
-      targetY = targetNode.position.y + targetHeight;
-    }
-  }
-
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition: sourcePos,
-    targetX,
-    targetY,
-    targetPosition: targetPos,
-  });
-
+  const { edgePath, labelX, labelY, sourceCardX, sourceCardY, targetCardX, targetCardY } = edgeGeometry;
   const isMasterDetail = data?.relationshipType === 'master-detail';
   const sourceCard = data?.sourceCardinality || 'N';
   const targetCard = data?.targetCardinality || '1';
-
-  // Calculate cardinality label positions (offset from connection points)
-  const cardinalityOffset = 25;
-  let sourceCardX = sourceX;
-  let sourceCardY = sourceY;
-  let targetCardX = targetX;
-  let targetCardY = targetY;
-
-  // Offset based on which side the connection is on
-  if (sourcePos === Position.Right) sourceCardX += cardinalityOffset;
-  if (sourcePos === Position.Left) sourceCardX -= cardinalityOffset;
-  if (sourcePos === Position.Top) sourceCardY -= cardinalityOffset;
-  if (sourcePos === Position.Bottom) sourceCardY += cardinalityOffset;
-
-  if (targetPos === Position.Right) targetCardX += cardinalityOffset;
-  if (targetPos === Position.Left) targetCardX -= cardinalityOffset;
-  if (targetPos === Position.Top) targetCardY -= cardinalityOffset;
-  if (targetPos === Position.Bottom) targetCardY += cardinalityOffset;
 
   return (
     <>
@@ -188,3 +217,45 @@ function SmartEdge({
 }
 
 export default memo(SmartEdge);
+
+// Type alias for backwards compatibility with existing code
+export type RelationshipEdgeData = SmartEdgeData;
+export type RelationshipEdgeType = SmartEdgeType;
+
+/**
+ * SVG marker definitions for edge arrows.
+ * These should be included in the React Flow container.
+ */
+export function EdgeMarkerDefs() {
+  return (
+    <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+      <defs>
+        {/* Filled arrow for master-detail relationships */}
+        <marker
+          id="arrow-filled"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#9050e9" />
+        </marker>
+
+        {/* Hollow arrow for lookup relationships */}
+        <marker
+          id="arrow-hollow"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="none" stroke="#0070d2" strokeWidth="1.5" />
+        </marker>
+      </defs>
+    </svg>
+  );
+}

@@ -26,8 +26,7 @@ import { cn } from '@/lib/utils';
 
 import ObjectNode from './ObjectNode';
 import type { ObjectNodeData } from './ObjectNode';
-import SmartEdge from './SmartEdge';
-import { EdgeMarkerDefs } from './RelationshipEdge';
+import SmartEdge, { EdgeMarkerDefs } from './SmartEdge';
 import { useAppStore } from '../../store';
 
 // Register custom node and edge types

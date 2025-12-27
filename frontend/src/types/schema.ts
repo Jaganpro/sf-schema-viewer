@@ -73,4 +73,4 @@ export interface BatchDescribeResponse {
 
 // Re-export component types for convenience
 export type { ObjectNodeData, ObjectNodeType } from '../components/flow/ObjectNode';
-export type { RelationshipEdgeData, RelationshipEdgeType } from '../components/flow/RelationshipEdge';
+export type { RelationshipEdgeData, RelationshipEdgeType } from '../components/flow/SmartEdge';

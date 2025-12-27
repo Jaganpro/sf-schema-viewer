@@ -41,18 +41,16 @@
 git clone https://github.com/Jaganpro/sf-schema-viewer.git
 cd sf-schema-viewer
 
-# Copy environment template
+# Copy environment template and add your Salesforce credentials
 cp .env.example .env
-# Edit .env with your Salesforce Connected App credentials
 
-# Start backend
-cd backend && uv sync && uv run uvicorn main:app --reload --port 8000
-
-# Start frontend (new terminal)
-cd frontend && npm install && npm run dev
+# Start both servers (installs dependencies automatically)
+./start.sh
 ```
 
 Open http://localhost:5173 and click **Connect to Salesforce** 🎉
+
+> **Note**: Press `Ctrl+C` to stop both servers cleanly.
 
 ---
 
@@ -99,32 +97,29 @@ SESSION_SECRET=generate_a_random_string_here
 FRONTEND_URL=http://localhost:5173
 ```
 
-### 3. Install & Run
+### 3. Start the App
 
-<table>
-<tr>
-<td width="50%">
-
-**Backend**
 ```bash
-cd backend
-uv sync
-uv run uvicorn main:app --reload --port 8000
+# One command starts everything!
+./start.sh
 ```
 
-</td>
-<td width="50%">
+This will:
+- Install all dependencies (backend & frontend)
+- Start the backend on http://localhost:8000
+- Start the frontend on http://localhost:5173
+- Handle clean shutdown with `Ctrl+C`
 
-**Frontend**
-```bash
-cd frontend
-npm install
-npm run dev
-```
+<details>
+<summary><b>Manual startup (alternative)</b></summary>
 
-</td>
-</tr>
-</table>
+If you prefer to run servers separately:
+
+| Backend | Frontend |
+|---------|----------|
+| `cd backend && uv sync && uv run uvicorn main:app --reload` | `cd frontend && npm install && npm run dev` |
+
+</details>
 
 ---
 
@@ -205,6 +200,7 @@ sf-schema-viewer/
 | `/auth/callback` | GET | OAuth callback handler |
 | `/auth/status` | GET | Check authentication status |
 | `/auth/logout` | POST | Clear session and logout |
+| `/auth/refresh` | POST | Refresh access token using refresh token |
 | `/api/objects` | GET | List all sObjects in the org |
 | `/api/objects/{name}/describe` | GET | Get full describe for one object |
 | `/api/objects/describe` | POST | Batch describe multiple objects |
