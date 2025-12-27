@@ -5,13 +5,20 @@
 import { useEffect } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { Layout } from './components/layout';
-import { ObjectPicker } from './components/sidebar';
+import { ObjectPicker, ObjectDetailPanel } from './components/sidebar';
 import { SchemaFlow } from './components/flow';
 import { ErrorBanner } from './components/ui/ErrorBanner';
 import { useAppStore } from './store';
 
 function App() {
-  const { checkAuth, loadObjects, loadApiVersions, authStatus } = useAppStore();
+  const {
+    checkAuth,
+    loadObjects,
+    loadApiVersions,
+    authStatus,
+    focusedObjectName,
+    setFocusedObject,
+  } = useAppStore();
 
   // Check authentication status on mount
   useEffect(() => {
@@ -32,7 +39,17 @@ function App() {
   return (
     <ReactFlowProvider>
       <ErrorBanner />
-      <Layout sidebar={<ObjectPicker />}>
+      <Layout
+        sidebar={<ObjectPicker />}
+        detailPanel={
+          focusedObjectName ? (
+            <ObjectDetailPanel
+              objectName={focusedObjectName}
+              onClose={() => setFocusedObject(null)}
+            />
+          ) : undefined
+        }
+      >
         <SchemaFlow />
       </Layout>
     </ReactFlowProvider>

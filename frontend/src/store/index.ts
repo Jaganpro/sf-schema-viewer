@@ -90,6 +90,7 @@ interface AppState {
   searchTerm: string;
   objectTypeFilters: ObjectTypeFilters;
   showLegend: boolean;
+  focusedObjectName: string | null;  // Object shown in detail panel
 
   // Error state
   error: string | null;
@@ -114,6 +115,7 @@ interface AppState {
   showAllObjectTypes: () => void;
   hideAllSystemObjects: () => void;
   toggleLegend: () => void;
+  setFocusedObject: (name: string | null) => void;
   toggleNodeCollapse: (nodeId: string) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
@@ -142,6 +144,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchTerm: '',
   objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS },
   showLegend: true,
+  focusedObjectName: null,
   error: null,
 
   // Actions
@@ -441,6 +444,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleLegend: () => {
     set((state) => ({ showLegend: !state.showLegend }));
+  },
+
+  setFocusedObject: (name: string | null) => {
+    set({ focusedObjectName: name });
   },
 
   toggleNodeCollapse: (nodeId: string) => {

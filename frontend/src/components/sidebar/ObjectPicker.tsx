@@ -3,7 +3,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, RefreshCw, Search, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, RefreshCw, Search, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -49,132 +49,82 @@ function getObjectTypeInfo(objectName: string) {
 interface ObjectItemProps {
   object: ObjectBasicInfo;
   isSelected: boolean;
+  isFocused: boolean;
   onToggle: () => void;
+  onFocus: () => void;
 }
 
-function ObjectItem({ object, isSelected, onToggle }: ObjectItemProps) {
-  const [expanded, setExpanded] = useState(false);
+/**
+ * Compact single-line object item.
+ * - Click checkbox: toggle ERD selection
+ * - Click row: focus object (show in detail panel)
+ */
+function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: ObjectItemProps) {
   const typeInfo = getObjectTypeInfo(object.name);
-
-  const handleExpandClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpanded(!expanded);
-  };
 
   return (
     <div
+      onClick={onFocus}
       className={cn(
-        'px-4 py-2 cursor-pointer hover:bg-sf-background transition-colors',
-        isSelected && 'bg-blue-50'
+        'px-4 py-2 cursor-pointer transition-colors flex items-center gap-2.5',
+        isFocused
+          ? 'bg-sf-blue/10 border-l-2 border-sf-blue'
+          : isSelected
+            ? 'bg-blue-50 hover:bg-blue-100/70'
+            : 'hover:bg-sf-background'
       )}
     >
-        {/* Main row */}
-        <div className="flex items-center gap-2.5" onClick={onToggle}>
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => onToggle()}
-            onClick={(e) => e.stopPropagation()}
-          />
-          <div className="flex-1 overflow-hidden flex flex-col gap-0.5">
-            {/* Label row with inline capability icons */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm text-sf-text truncate">{object.label}</span>
-              {/* Colored capability icons with tooltips */}
-              {object.searchable && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="shrink-0">
-                      <Search className="h-3 w-3 text-blue-500" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Searchable via SOSL queries</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {object.triggerable && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="shrink-0">
-                      <Zap className="h-3 w-3 text-amber-500" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Supports Apex Triggers</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {/* Object classification badges */}
-              {object.custom ? (
-                <>
-                  <Badge variant="custom">Custom</Badge>
-                  {object.namespace_prefix && (
-                    <Badge variant="namespace">{object.namespace_prefix}</Badge>
-                  )}
-                </>
-              ) : (
-                <Badge variant="standard">Standard</Badge>
-              )}
-              {/* Object type badge (Feed, Share, History, etc.) */}
-              {typeInfo && (
-                <Badge variant={typeInfo.variant as any}>{typeInfo.badge}</Badge>
-              )}
-            </div>
-            {/* API name row with expand chevron */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-sf-text-muted truncate">{object.name}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleExpandClick}
-                    className="p-0.5 hover:bg-gray-200 rounded transition-colors shrink-0"
-                  >
-                    {expanded ? (
-                      <ChevronUp className="h-3 w-3 text-sf-text-muted" />
-                    ) : (
-                      <ChevronDown className="h-3 w-3 text-sf-text-muted" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{expanded ? 'Hide details' : 'Show details'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-        </div>
-
-      {/* Expandable details */}
-      {expanded && (
-        <div className="mt-2 ml-7 p-2 bg-gray-50 rounded-md text-[11px] text-sf-text-muted space-y-1.5">
-          {/* CRUD Capabilities */}
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            <span className={object.queryable ? 'text-green-600' : 'text-gray-400'}>
-              {object.queryable ? '✓' : '✗'} Query
-            </span>
-            <span className={object.createable ? 'text-green-600' : 'text-gray-400'}>
-              {object.createable ? '✓' : '✗'} Create
-            </span>
-            <span className={object.updateable ? 'text-green-600' : 'text-gray-400'}>
-              {object.updateable ? '✓' : '✗'} Update
-            </span>
-            <span className={object.deletable ? 'text-green-600' : 'text-gray-400'}>
-              {object.deletable ? '✓' : '✗'} Delete
-            </span>
-          </div>
-          {/* Additional capabilities */}
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {object.feed_enabled && <span className="text-sf-blue">• Feed Enabled</span>}
-            {object.mergeable && <span className="text-sf-blue">• Mergeable</span>}
-            {object.replicateable && <span className="text-sf-blue">• Replicateable</span>}
-          </div>
-          {/* Key prefix */}
-          {object.key_prefix && (
-            <div className="text-gray-500">
-              Key Prefix: <span className="font-mono">{object.key_prefix}</span>
-            </div>
-          )}
-        </div>
+      <Checkbox
+        checked={isSelected}
+        onCheckedChange={() => onToggle()}
+        onClick={(e) => e.stopPropagation()}
+      />
+      <div className="flex-1 overflow-hidden flex items-center gap-1.5">
+        <span className="text-sm text-sf-text truncate">{object.label}</span>
+        {/* Colored capability icons with tooltips */}
+        {object.searchable && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="shrink-0">
+                <Search className="h-3 w-3 text-blue-500" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Searchable via SOSL queries</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {object.triggerable && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="shrink-0">
+                <Zap className="h-3 w-3 text-amber-500" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Supports Apex Triggers</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {/* Object classification badges */}
+        {object.custom ? (
+          <>
+            <Badge variant="custom">Custom</Badge>
+            {object.namespace_prefix && (
+              <Badge variant="namespace">{object.namespace_prefix}</Badge>
+            )}
+          </>
+        ) : (
+          <Badge variant="standard">Standard</Badge>
+        )}
+        {/* Object type badge (Feed, Share, History, etc.) */}
+        {typeInfo && (
+          <Badge variant={typeInfo.variant as any}>{typeInfo.badge}</Badge>
+        )}
+      </div>
+      {/* Focus indicator */}
+      {isFocused && (
+        <ChevronRight className="h-4 w-4 text-sf-blue shrink-0" />
       )}
     </div>
   );
@@ -204,6 +154,8 @@ export default function ObjectPicker() {
     toggleSidebar,
     setSidebarWidth,
     authStatus,
+    focusedObjectName,
+    setFocusedObject,
   } = useAppStore();
 
   const [localSearch, setLocalSearch] = useState(searchTerm);
@@ -535,7 +487,9 @@ export default function ObjectPicker() {
                       key={obj.name}
                       object={obj}
                       isSelected={selectedObjectNames.includes(obj.name)}
+                      isFocused={focusedObjectName === obj.name}
                       onToggle={() => handleToggleObject(obj.name)}
+                      onFocus={() => setFocusedObject(obj.name)}
                     />
                   ))
                 )}
