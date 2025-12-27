@@ -97,6 +97,11 @@ interface AppState {
   // Field selection state - which fields to show in ERD for each object
   selectedFieldsByObject: Map<string, Set<string>>;
 
+  // Child relationship selection state - tracks which child relationships were explicitly selected
+  // Key: parent object name, Value: Set of "ChildObject.FieldName" relationship keys
+  // Used to filter edges when objects are added via child relationships tab
+  selectedChildRelsByParent: Map<string, Set<string>>;
+
   // Error state
   error: string | null;
 
@@ -131,6 +136,10 @@ interface AppState {
   selectOnlyLookups: (objectName: string) => void;
   refreshNodeFields: (objectName: string) => void;  // Update node fields without re-layout
   toggleNodeCollapse: (nodeId: string) => void;
+  // Child relationship selection actions
+  addChildRelationship: (parentObject: string, relationshipKey: string) => void;
+  removeChildRelationship: (parentObject: string, relationshipKey: string) => void;
+  clearChildRelationships: (parentObject: string) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   setError: (error: string | null) => void;
@@ -163,6 +172,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   focusedObjectName: null,
   advancedFiltersExpanded: false,  // Default collapsed
   selectedFieldsByObject: new Map(),
+  selectedChildRelsByParent: new Map(),  // Tracks child relationships for edge filtering
   error: null,
 
   // Actions
@@ -304,13 +314,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // Get the describe for the new object
     const newDescribedObjects = get().describedObjects;
-    const { selectedFieldsByObject } = get();
+    const { selectedFieldsByObject, selectedChildRelsByParent } = get();
     const describes = newSelectedObjects
       .map((n) => newDescribedObjects.get(n))
       .filter((d): d is ObjectDescribe => d !== undefined);
 
-    // Transform to get new nodes and edges (with field selection filtering)
-    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, selectedFieldsByObject);
+    // Transform to get new nodes and edges (with field selection and child relationship filtering)
+    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent);
 
     // Preserve existing node positions, only position new nodes
     const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
@@ -335,7 +345,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   removeObject: (name: string) => {
-    const { selectedObjectNames, describedObjects, selectedFieldsByObject, nodes } = get();
+    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent, nodes } = get();
 
     const newSelectedObjects = selectedObjectNames.filter((n) => n !== name);
 
@@ -343,7 +353,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newFieldSelections = new Map(selectedFieldsByObject);
     newFieldSelections.delete(name);
 
-    set({ selectedObjectNames: newSelectedObjects, selectedFieldsByObject: newFieldSelections });
+    // Clear child relationship selections for the removed object (if it was a parent)
+    const newChildRels = new Map(selectedChildRelsByParent);
+    newChildRels.delete(name);
+
+    set({ selectedObjectNames: newSelectedObjects, selectedFieldsByObject: newFieldSelections, selectedChildRelsByParent: newChildRels });
 
     // Get describes for remaining objects
     const describes = newSelectedObjects
@@ -355,8 +369,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    // Transform to get updated nodes and edges (with field selection filtering)
-    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, newFieldSelections);
+    // Transform to get updated nodes and edges (with field selection and child relationship filtering)
+    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, newFieldSelections, newChildRels);
 
     // Preserve existing node positions
     const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
@@ -369,7 +383,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   applyLayout: () => {
-    const { selectedObjectNames, describedObjects, selectedFieldsByObject } = get();
+    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent } = get();
 
     // Get describes for selected objects
     const describes = selectedObjectNames
@@ -381,8 +395,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    // Transform to React Flow elements (pass field selection for filtering)
-    const { nodes, edges } = transformToFlowElements(describes, selectedObjectNames, selectedFieldsByObject);
+    // Transform to React Flow elements (pass field selection and child relationship filtering)
+    const { nodes, edges } = transformToFlowElements(describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent);
 
     // Apply Dagre layout
     const layouted = applyDagreLayout(nodes, edges);
@@ -646,16 +660,55 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
+  // Child relationship selection actions
+  // These track which specific relationships were selected to filter edges
+  addChildRelationship: (parentObject: string, relationshipKey: string) => {
+    set((state) => {
+      const newMap = new Map(state.selectedChildRelsByParent);
+      const currentSet = newMap.get(parentObject) ?? new Set<string>();
+      const newSet = new Set(currentSet);
+      newSet.add(relationshipKey);
+      newMap.set(parentObject, newSet);
+      return { selectedChildRelsByParent: newMap };
+    });
+  },
+
+  removeChildRelationship: (parentObject: string, relationshipKey: string) => {
+    set((state) => {
+      const newMap = new Map(state.selectedChildRelsByParent);
+      const currentSet = newMap.get(parentObject);
+      if (currentSet) {
+        const newSet = new Set(currentSet);
+        newSet.delete(relationshipKey);
+        if (newSet.size === 0) {
+          newMap.delete(parentObject);
+        } else {
+          newMap.set(parentObject, newSet);
+        }
+      }
+      return { selectedChildRelsByParent: newMap };
+    });
+  },
+
+  clearChildRelationships: (parentObject: string) => {
+    set((state) => {
+      const newMap = new Map(state.selectedChildRelsByParent);
+      newMap.delete(parentObject);
+      return { selectedChildRelsByParent: newMap };
+    });
+  },
+
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
 
-  // Clear all selections - objects, fields, focused object, and ERD
+  // Clear all selections - objects, fields, child relationships, focused object, and ERD
   clearAllSelections: () => {
     set({
       selectedObjectNames: [],
       selectedFieldsByObject: new Map(),
+      selectedChildRelsByParent: new Map(),
       focusedObjectName: null,
       nodes: [],
       edges: [],

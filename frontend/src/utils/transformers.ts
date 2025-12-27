@@ -16,11 +16,13 @@ type RelationshipType = 'lookup' | 'master-detail';
  * @param describes - Array of object descriptions
  * @param selectedObjects - Names of objects currently in the ERD
  * @param selectedFieldsByObject - Map of object name to selected field names (for filtering)
+ * @param selectedChildRelsByParent - Map of parent object to selected child relationships (for edge filtering)
  */
 export function transformToFlowElements(
   describes: ObjectDescribe[],
   selectedObjects: string[],
-  selectedFieldsByObject?: Map<string, Set<string>>
+  selectedFieldsByObject?: Map<string, Set<string>>,
+  selectedChildRelsByParent?: Map<string, Set<string>>
 ): { nodes: Node<ObjectNodeData>[]; edges: Edge<RelationshipEdgeData>[] } {
   const selectedSet = new Set(selectedObjects);
   const nodes: Node<ObjectNodeData>[] = [];
@@ -50,7 +52,7 @@ export function transformToFlowElements(
   }
 
   // Create edges for relationships (always use full describe, not filtered fields)
-  // User choice: edges should always show regardless of field selection
+  // Edges are filtered by child relationship selection when applicable
   for (const describe of describes) {
     for (const field of describe.fields) {
       // Only create edges for reference fields
@@ -62,6 +64,20 @@ export function transformToFlowElements(
       for (const targetObject of field.reference_to) {
         if (!selectedSet.has(targetObject)) {
           continue;
+        }
+
+        // Check if this edge should be filtered by child relationship selection
+        // Relationship key format: "SourceObject.FieldName" (e.g., "Asset.AssetProvidedById")
+        const relationshipKey = `${describe.name}.${field.name}`;
+
+        // If the target object has child relationship selections, only show selected edges
+        // If no selections for target (object added from main list), show all edges
+        const targetChildRels = selectedChildRelsByParent?.get(targetObject);
+        if (targetChildRels && targetChildRels.size > 0) {
+          // Target has child relationship selections - only show if this edge was selected
+          if (!targetChildRels.has(relationshipKey)) {
+            continue; // Skip this edge - it wasn't explicitly selected
+          }
         }
 
         // Determine relationship type

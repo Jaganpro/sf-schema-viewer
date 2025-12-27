@@ -68,10 +68,17 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     selectOnlyLookups,
     detailPanelWidth,
     setDetailPanelWidth,
+    // Child relationship selection (persisted in store for edge filtering)
+    selectedChildRelsByParent,
+    addChildRelationship,
+    removeChildRelationship,
+    clearChildRelationships,
   } = useAppStore();
   const [fieldSearch, setFieldSearch] = useState('');
   const [relSearch, setRelSearch] = useState('');
-  const [selectedRels, setSelectedRels] = useState<Set<string>>(new Set());
+
+  // Get selected child relationships for this object from store
+  const selectedRels = selectedChildRelsByParent.get(objectName) ?? new Set<string>();
 
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
@@ -124,9 +131,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     }
   }, [objectName, describedObjects, describeObject]);
 
-  // Reset child relationship selections when switching to a different object
+  // Reset search term when switching to a different object
   useEffect(() => {
-    setSelectedRels(new Set());
     setRelSearch('');
   }, [objectName]);
 
@@ -176,25 +182,18 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   const getRelKey = (rel: RelationshipInfo) => `${rel.child_object}.${rel.field}`;
 
   // Toggle relationship selection - also adds/removes child object from diagram
+  // Uses store to persist selection for edge filtering
   const toggleRelSelection = (rel: RelationshipInfo) => {
     const key = getRelKey(rel);
     const isCurrentlySelected = selectedRels.has(key);
 
     if (isCurrentlySelected) {
       // Unchecking - remove from selection and diagram
-      setSelectedRels((prev) => {
-        const next = new Set(prev);
-        next.delete(key);
-        return next;
-      });
+      removeChildRelationship(objectName, key);
       removeObject(rel.child_object);
     } else {
       // Checking - add to selection and diagram
-      setSelectedRels((prev) => {
-        const next = new Set(prev);
-        next.add(key);
-        return next;
-      });
+      addChildRelationship(objectName, key);
       addObject(rel.child_object);
     }
   };
@@ -215,8 +214,10 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       // Single batch API call - no race conditions!
       selectObjects(allObjectNames);
 
-      // Update local selection state
-      setSelectedRels(new Set(objectDescribe.child_relationships.map(getRelKey)));
+      // Add all relationships to store for edge filtering
+      objectDescribe.child_relationships.forEach((rel) => {
+        addChildRelationship(objectName, getRelKey(rel));
+      });
     }
   };
 
@@ -227,8 +228,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       const childObject = key.split('.')[0]; // Extract object name from "Object.Field"
       removeObject(childObject);
     });
-    // Clear selection state
-    setSelectedRels(new Set());
+    // Clear selection state from store
+    clearChildRelationships(objectName);
   };
 
   if (!objectInfo) {
