@@ -140,6 +140,7 @@ interface AppState {
   addChildRelationship: (parentObject: string, relationshipKey: string) => void;
   removeChildRelationship: (parentObject: string, relationshipKey: string) => void;
   clearChildRelationships: (parentObject: string) => void;
+  refreshEdges: () => void;  // Recalculate edges only (preserves node positions)
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   setError: (error: string | null) => void;
@@ -696,6 +697,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       newMap.delete(parentObject);
       return { selectedChildRelsByParent: newMap };
     });
+  },
+
+  // Recalculate edges only, preserving node positions
+  // Used when child relationships change but objects stay the same
+  refreshEdges: () => {
+    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent } = get();
+
+    const describes = selectedObjectNames
+      .map((name) => describedObjects.get(name))
+      .filter((d): d is ObjectDescribe => d !== undefined);
+
+    if (describes.length === 0) return;
+
+    // Only recalculate edges, keep existing nodes with positions
+    const { edges: newEdges } = transformToFlowElements(
+      describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent
+    );
+
+    set({ edges: newEdges });
   },
 
   setNodes: (nodes) => set({ nodes }),

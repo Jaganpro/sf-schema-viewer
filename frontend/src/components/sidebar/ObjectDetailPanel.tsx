@@ -73,6 +73,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     addChildRelationship,
     removeChildRelationship,
     clearChildRelationships,
+    refreshEdges,
   } = useAppStore();
   const [fieldSearch, setFieldSearch] = useState('');
   const [relSearch, setRelSearch] = useState('');
@@ -186,6 +187,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   const toggleRelSelection = (rel: RelationshipInfo) => {
     const key = getRelKey(rel);
     const isCurrentlySelected = selectedRels.has(key);
+    const isChildAlreadyInDiagram = selectedObjectNames.includes(rel.child_object);
 
     if (isCurrentlySelected) {
       // Unchecking - remove from selection and diagram
@@ -194,7 +196,13 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     } else {
       // Checking - add to selection and diagram
       addChildRelationship(objectName, key);
-      addObject(rel.child_object);
+      if (isChildAlreadyInDiagram) {
+        // Object already in diagram - just refresh edges to show new relationship
+        refreshEdges();
+      } else {
+        // New object - add to diagram (which will also create edges)
+        addObject(rel.child_object);
+      }
     }
   };
 
