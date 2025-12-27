@@ -25,15 +25,15 @@ import type { ObjectBasicInfo } from '../../types/schema';
  * Each filter matches objects by their API name suffix pattern.
  */
 const OBJECT_TYPE_FILTERS = [
-  { key: 'feed', label: 'Feed Objects', badge: 'Feed', variant: 'feed', pattern: (n: string) => n.endsWith('Feed') },
-  { key: 'share', label: 'Share Objects', badge: 'Share', variant: 'share', pattern: (n: string) => n.endsWith('Share') },
-  { key: 'history', label: 'History Objects', badge: 'History', variant: 'history', pattern: (n: string) => n.endsWith('History') },
+  { key: 'feed', label: 'Feed Objects', badge: 'FEED', variant: 'feed', pattern: (n: string) => n.endsWith('Feed') },
+  { key: 'share', label: 'Share Objects', badge: 'SHARE', variant: 'share', pattern: (n: string) => n.endsWith('Share') },
+  { key: 'history', label: 'History Objects', badge: 'HIST', variant: 'history', pattern: (n: string) => n.endsWith('History') },
   { key: 'changeEvent', label: 'Change Events', badge: 'CDC', variant: 'changeEvent', pattern: (n: string) => n.endsWith('ChangeEvent') },
-  { key: 'platformEvent', label: 'Platform Events', badge: 'Event', variant: 'platformEvent', pattern: (n: string) => n.endsWith('__e') },
-  { key: 'externalObject', label: 'External Objects', badge: 'External', variant: 'externalObject', pattern: (n: string) => n.endsWith('__x') },
+  { key: 'platformEvent', label: 'Platform Events', badge: 'EVT', variant: 'platformEvent', pattern: (n: string) => n.endsWith('__e') },
+  { key: 'externalObject', label: 'External Objects', badge: 'EXT', variant: 'externalObject', pattern: (n: string) => n.endsWith('__x') },
   { key: 'customMetadata', label: 'Custom Metadata', badge: 'MDT', variant: 'customMetadata', pattern: (n: string) => n.endsWith('__mdt') },
-  { key: 'bigObject', label: 'Big Objects', badge: 'Big', variant: 'bigObject', pattern: (n: string) => n.endsWith('__b') },
-  { key: 'tag', label: 'Tag Objects', badge: 'Tag', variant: 'tag', pattern: (n: string) => n.endsWith('Tag') },
+  { key: 'bigObject', label: 'Big Objects', badge: 'BIG', variant: 'bigObject', pattern: (n: string) => n.endsWith('__b') },
+  { key: 'tag', label: 'Tag Objects', badge: 'TAG', variant: 'tag', pattern: (n: string) => n.endsWith('Tag') },
 ] as const;
 
 /** Get the object type info for an object based on its name pattern */
@@ -44,6 +44,15 @@ function getObjectTypeInfo(objectName: string) {
     }
   }
   return null;
+}
+
+/** Maximum characters to display for object labels before truncation */
+const MAX_LABEL_CHARS = 25;
+
+/** Truncate label to max characters with ellipsis */
+function truncateLabel(label: string): string {
+  if (label.length <= MAX_LABEL_CHARS) return label;
+  return label.slice(0, MAX_LABEL_CHARS) + '...';
 }
 
 interface ObjectItemProps {
@@ -58,6 +67,8 @@ interface ObjectItemProps {
  * Compact single-line object item.
  * - Click checkbox: toggle ERD selection
  * - Click row: focus object (show in detail panel)
+ * - Short-form badges indicate object type (STD/CUST + type)
+ * - Always-visible chevron indicates clickability
  */
 function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: ObjectItemProps) {
   const typeInfo = getObjectTypeInfo(object.name);
@@ -66,12 +77,12 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
     <div
       onClick={onFocus}
       className={cn(
-        'px-4 py-2 cursor-pointer transition-colors flex items-center gap-2.5',
+        'px-4 py-2 cursor-pointer transition-colors flex items-center gap-2',
         isFocused
           ? 'bg-sf-blue/10 border-l-2 border-sf-blue'
           : isSelected
             ? 'bg-blue-50 hover:bg-blue-100/70'
-            : 'hover:bg-sf-background'
+            : 'hover:bg-gray-50'
       )}
     >
       <Checkbox
@@ -79,9 +90,21 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
         onCheckedChange={() => onToggle()}
         onClick={(e) => e.stopPropagation()}
       />
-      <div className="flex-1 overflow-hidden flex items-center gap-1.5">
-        <span className="text-sm text-sf-text truncate">{object.label}</span>
-        {/* Colored capability icons with tooltips */}
+
+      {/* Label and icons - takes available space, truncates if needed */}
+      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+        {/* Label with tooltip showing full name + API name */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-sm text-sf-text">{truncateLabel(object.label)}</span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="font-medium">{object.label}</p>
+            <p className="text-xs text-gray-500">{object.name}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Capability icons */}
         {object.searchable && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -106,26 +129,32 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
             </TooltipContent>
           </Tooltip>
         )}
-        {/* Object classification badges */}
-        {object.custom ? (
-          <>
-            <Badge variant="custom">Custom</Badge>
-            {object.namespace_prefix && (
-              <Badge variant="namespace">{object.namespace_prefix}</Badge>
-            )}
-          </>
-        ) : (
-          <Badge variant="standard">Standard</Badge>
-        )}
-        {/* Object type badge (Feed, Share, History, etc.) */}
-        {typeInfo && (
-          <Badge variant={typeInfo.variant as any}>{typeInfo.badge}</Badge>
-        )}
       </div>
-      {/* Focus indicator */}
-      {isFocused && (
-        <ChevronRight className="h-4 w-4 text-sf-blue shrink-0" />
+
+      {/* Classification badges (STD/CUST) */}
+      {object.custom ? (
+        <>
+          <Badge variant="custom">CUST</Badge>
+          {object.namespace_prefix && (
+            <Badge variant="namespace">{object.namespace_prefix}</Badge>
+          )}
+        </>
+      ) : (
+        <Badge variant="standard">STD</Badge>
       )}
+
+      {/* Type badge (FEED, SHARE, HIST, etc.) */}
+      {typeInfo && (
+        <Badge variant={typeInfo.variant as any}>{typeInfo.badge}</Badge>
+      )}
+
+      {/* Always-visible chevron indicator */}
+      <ChevronRight
+        className={cn(
+          'h-4 w-4 shrink-0 transition-colors',
+          isFocused ? 'text-sf-blue' : 'text-gray-300'
+        )}
+      />
     </div>
   );
 }

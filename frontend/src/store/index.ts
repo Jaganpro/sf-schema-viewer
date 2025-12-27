@@ -153,7 +153,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   nodes: [],
   edges: [],
   sidebarOpen: true,
-  sidebarWidth: 300,
+  sidebarWidth: 400,
   detailPanelWidth: 350,
   classificationFilters: { ...DEFAULT_CLASSIFICATION_FILTERS },
   selectedNamespaces: [],
