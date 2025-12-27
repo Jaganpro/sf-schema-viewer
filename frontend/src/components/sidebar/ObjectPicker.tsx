@@ -46,15 +46,6 @@ function getObjectTypeInfo(objectName: string) {
   return null;
 }
 
-/** Maximum characters to display for object labels before truncation */
-const MAX_LABEL_CHARS = 25;
-
-/** Truncate label to max characters with ellipsis */
-function truncateLabel(label: string): string {
-  if (label.length <= MAX_LABEL_CHARS) return label;
-  return label.slice(0, MAX_LABEL_CHARS) + '...';
-}
-
 interface ObjectItemProps {
   object: ObjectBasicInfo;
   isSelected: boolean;
@@ -77,38 +68,42 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
     <div
       onClick={onFocus}
       className={cn(
-        'px-4 py-2 cursor-pointer transition-colors flex items-center gap-2',
+        'px-4 py-2 cursor-pointer transition-colors grid items-center gap-2',
         isFocused
           ? 'bg-sf-blue/10 border-l-2 border-sf-blue'
           : isSelected
             ? 'bg-blue-50 hover:bg-blue-100/70'
             : 'hover:bg-gray-50'
       )}
+      style={{ gridTemplateColumns: 'auto 1fr auto' }}
     >
       <Checkbox
         checked={isSelected}
         onCheckedChange={() => onToggle()}
         onClick={(e) => e.stopPropagation()}
+        className="shrink-0"
       />
 
-      {/* Label and icons - takes available space, truncates if needed */}
-      <div className="flex-1 min-w-0 flex items-center gap-1.5">
-        {/* Label with tooltip showing full name + API name */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="text-sm text-sf-text">{truncateLabel(object.label)}</span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="font-medium">{object.label}</p>
-            <p className="text-xs text-gray-500">{object.name}</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Label - middle column, truncates */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-sm text-sf-text truncate">
+            {object.label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="font-medium">{object.label}</p>
+          <p className="text-xs text-gray-500">{object.name}</p>
+        </TooltipContent>
+      </Tooltip>
 
+      {/* Right side: icons, badges, chevron */}
+      <div className="flex items-center gap-1.5">
         {/* Capability icons */}
         {object.searchable && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="shrink-0">
+              <span>
                 <Search className="h-3 w-3 text-blue-500" />
               </span>
             </TooltipTrigger>
@@ -120,7 +115,7 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
         {object.triggerable && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="shrink-0">
+              <span>
                 <Zap className="h-3 w-3 text-amber-500" />
               </span>
             </TooltipTrigger>
@@ -129,32 +124,32 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
             </TooltipContent>
           </Tooltip>
         )}
-      </div>
 
-      {/* Classification badges (STD/CUST) */}
-      {object.custom ? (
-        <>
-          <Badge variant="custom">CUST</Badge>
-          {object.namespace_prefix && (
-            <Badge variant="namespace">{object.namespace_prefix}</Badge>
-          )}
-        </>
-      ) : (
-        <Badge variant="standard">STD</Badge>
-      )}
-
-      {/* Type badge (FEED, SHARE, HIST, etc.) */}
-      {typeInfo && (
-        <Badge variant={typeInfo.variant as any}>{typeInfo.badge}</Badge>
-      )}
-
-      {/* Always-visible chevron indicator */}
-      <ChevronRight
-        className={cn(
-          'h-4 w-4 shrink-0 transition-colors',
-          isFocused ? 'text-sf-blue' : 'text-gray-300'
+        {/* Classification badges (STD/CUST) */}
+        {object.custom ? (
+          <>
+            <Badge variant="custom">CUST</Badge>
+            {object.namespace_prefix && (
+              <Badge variant="namespace">{object.namespace_prefix}</Badge>
+            )}
+          </>
+        ) : (
+          <Badge variant="standard">STD</Badge>
         )}
-      />
+
+        {/* Type badge (FEED, SHARE, HIST, etc.) */}
+        {typeInfo && (
+          <Badge variant={typeInfo.variant as any}>{typeInfo.badge}</Badge>
+        )}
+
+        {/* Always-visible chevron indicator */}
+        <ChevronRight
+          className={cn(
+            'h-4 w-4 transition-colors',
+            isFocused ? 'text-sf-blue' : 'text-gray-300'
+          )}
+        />
+      </div>
     </div>
   );
 }
@@ -530,8 +525,8 @@ export default function ObjectPicker() {
 
           {/* Object list */}
           <TooltipProvider delayDuration={200}>
-            <ScrollArea className="flex-1">
-              <div className="py-2">
+            <ScrollArea className="flex-1 w-full">
+              <div className="py-2 w-full">
                 {isLoadingObjects ? (
                   <div className="py-8 text-center text-sf-text-muted text-sm">
                     Loading objects...
