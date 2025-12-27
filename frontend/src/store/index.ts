@@ -72,6 +72,7 @@ interface AppState {
   searchTerm: string;
   objectTypeFilters: ObjectTypeFilters;
   filterSectionExpanded: boolean;
+  showLegend: boolean;
 
   // Error state
   error: string | null;
@@ -94,6 +95,7 @@ interface AppState {
   toggleFilterSection: () => void;
   showAllObjectTypes: () => void;
   hideAllSystemObjects: () => void;
+  toggleLegend: () => void;
   toggleNodeCollapse: (nodeId: string) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
@@ -121,6 +123,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchTerm: '',
   objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS },
   filterSectionExpanded: false,
+  showLegend: true,
   error: null,
 
   // Actions
@@ -391,6 +394,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   hideAllSystemObjects: () => {
     set({ objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS } });
+  },
+
+  toggleLegend: () => {
+    set((state) => ({ showLegend: !state.showLegend }));
   },
 
   toggleNodeCollapse: (nodeId: string) => {

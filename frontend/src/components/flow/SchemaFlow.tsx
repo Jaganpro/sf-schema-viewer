@@ -7,7 +7,6 @@ import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -21,7 +20,10 @@ import {
   RefreshCcw,
   Focus,
   Loader2,
+  X,
+  ChevronUp,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 import ObjectNode from './ObjectNode';
@@ -45,6 +47,8 @@ export default function SchemaFlow() {
     applyLayout,
     isLoadingDescribe,
     selectedObjectNames,
+    showLegend,
+    toggleLegend,
   } = useAppStore();
 
   // Compact mode state
@@ -158,15 +162,10 @@ export default function SchemaFlow() {
         defaultEdgeOptions={{
           type: 'simpleFloating',
         }}
+        proOptions={{ hideAttribution: true }}
       >
         <Background color="#e5e5e5" gap={20} />
         <Controls />
-        <MiniMap
-          nodeColor={(node) =>
-            node.data?.isCustom ? '#9050e9' : '#0070d2'
-          }
-          maskColor="rgba(255, 255, 255, 0.8)"
-        />
 
         {/* Control Panel */}
         <Panel position="top-right" className="flex gap-2">
@@ -233,42 +232,79 @@ export default function SchemaFlow() {
           </Panel>
         )}
 
-        {/* Legend */}
+        {/* Legend with toggle */}
         <Panel position="bottom-right">
-          <div className="bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-sm">
-            <h4 className="m-0 mb-3 text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold">
+          {showLegend ? (
+            <div className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden">
+              {/* Header with close button */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
+                <h4 className="m-0 text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold">
+                  Legend
+                </h4>
+                <button
+                  onClick={toggleLegend}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Hide legend"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {/* Legend content */}
+              <div className="px-3 py-2.5 space-y-2">
+                {/* Relationship lines */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs text-sf-text">
+                    <span
+                      className="w-6 h-0.5"
+                      style={{
+                        background: 'repeating-linear-gradient(90deg, #0176D3 0px, #0176D3 4px, transparent 4px, transparent 8px)',
+                      }}
+                    />
+                    <span>Lookup</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-sf-text">
+                    <span className="w-6 h-0.5 bg-sf-purple" />
+                    <span>Master-Detail</span>
+                  </div>
+                </div>
+                {/* Object types */}
+                <div className="border-t border-gray-100 pt-2">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Badge variant="standard">Standard</Badge>
+                    <Badge variant="custom">Custom</Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Badge variant="feed">Feed</Badge>
+                    <Badge variant="share">Share</Badge>
+                    <Badge variant="history">History</Badge>
+                    <Badge variant="changeEvent">CDC</Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1 mt-1">
+                    <Badge variant="platformEvent">Event</Badge>
+                    <Badge variant="externalObject">External</Badge>
+                    <Badge variant="customMetadata">Metadata</Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1 mt-1">
+                    <Badge variant="bigObject">Big</Badge>
+                    <Badge variant="tag">Tag</Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={toggleLegend}
+              className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-md text-xs text-sf-text hover:bg-gray-50 flex items-center gap-1.5 transition-colors"
+              title="Show legend"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
               Legend
-            </h4>
-            <div className="flex items-center gap-2.5 mb-2 text-xs text-sf-text">
-              <span
-                className="w-7 h-0.5"
-                style={{
-                  background: 'repeating-linear-gradient(90deg, #0176D3 0px, #0176D3 5px, transparent 5px, transparent 9px)',
-                }}
-              />
-              <span>Lookup Relationship</span>
-            </div>
-            <div className="flex items-center gap-2.5 mb-2 text-xs text-sf-text">
-              <span className="w-7 h-0.5 bg-sf-purple" />
-              <span>Master-Detail Relationship</span>
-            </div>
-            <div className="flex items-center gap-2.5 mb-2 text-xs text-sf-text">
-              <span className="w-[18px] h-[18px] rounded bg-sf-blue flex items-center justify-center text-[10px] font-bold text-white">
-                S
-              </span>
-              <span>Standard Object</span>
-            </div>
-            <div className="flex items-center gap-2.5 text-xs text-sf-text">
-              <span className="w-[18px] h-[18px] rounded bg-sf-purple flex items-center justify-center text-[10px] font-bold text-white">
-                C
-              </span>
-              <span>Custom Object</span>
-            </div>
-          </div>
+            </button>
+          )}
         </Panel>
 
         {/* Stats */}
-        <Panel position="bottom-left">
+        <Panel position="top-left" className="mt-[120px]">
           <div className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-xs text-sf-text-muted flex gap-2.5 shadow-sm font-medium">
             <span>{selectedObjectNames.length} objects</span>
             <span>•</span>
