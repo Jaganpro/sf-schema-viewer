@@ -3,7 +3,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, X, RefreshCw, Search, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, X, RefreshCw, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -99,19 +99,7 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
 
       {/* Right side: icons, badges, chevron */}
       <div className="flex items-center gap-1.5">
-        {/* Capability icons */}
-        {object.searchable && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Search className="h-3 w-3 text-blue-500" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Searchable via SOSL queries</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
+        {/* Triggerable icon */}
         {object.triggerable && (
           <Tooltip>
             <TooltipTrigger asChild>
