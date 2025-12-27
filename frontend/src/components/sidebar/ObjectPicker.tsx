@@ -84,7 +84,7 @@ function ObjectItem({ object, isSelected, onToggle }: ObjectItemProps) {
           <div className="flex-1 overflow-hidden flex flex-col gap-0.5">
             {/* Label row with inline capability icons */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[13px] text-sf-text truncate">{object.label}</span>
+              <span className="text-sm text-sf-text truncate">{object.label}</span>
               {/* Colored capability icons with tooltips */}
               {object.searchable && (
                 <Tooltip>
@@ -128,7 +128,7 @@ function ObjectItem({ object, isSelected, onToggle }: ObjectItemProps) {
             </div>
             {/* API name row with expand chevron */}
             <div className="flex items-center gap-1">
-              <span className="text-[11px] text-sf-text-muted truncate">{object.name}</span>
+              <span className="text-xs text-sf-text-muted truncate">{object.name}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -552,7 +552,7 @@ export default function ObjectPicker() {
 
           {/* Selected count */}
           {selectedObjectNames.length > 0 && (
-            <div className="px-4 py-2 bg-blue-50 text-sf-blue text-[13px] font-medium">
+            <div className="px-4 py-2 bg-blue-50 text-sf-blue text-sm font-medium">
               {selectedObjectNames.length} object{selectedObjectNames.length !== 1 ? 's' : ''} selected
             </div>
           )}

@@ -172,7 +172,7 @@ export default function SchemaFlow() {
           <button
             onClick={() => setCompactMode(!compactMode)}
             className={cn(
-              'bg-white border border-gray-300 rounded-md px-3.5 py-2 text-[13px] font-medium cursor-pointer flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]',
+              'bg-white border border-gray-300 rounded-md px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]',
               compactMode
                 ? 'bg-sf-blue border-sf-blue text-white hover:bg-sf-blue-dark'
                 : 'text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue'
@@ -193,7 +193,7 @@ export default function SchemaFlow() {
           </button>
           <button
             onClick={handleReLayout}
-            className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-[13px] font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
+            className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
             title="Re-apply auto-layout"
           >
             <RefreshCcw className="h-4 w-4" />
@@ -201,7 +201,7 @@ export default function SchemaFlow() {
           </button>
           <button
             onClick={() => fitView({ padding: 0.2, duration: 300 })}
-            className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-[13px] font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
+            className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
             title="Fit all nodes in view"
           >
             <Focus className="h-4 w-4" />

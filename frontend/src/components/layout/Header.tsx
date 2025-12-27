@@ -67,7 +67,7 @@ export default function Header() {
 
             <div className="text-right">
               <span className="block text-sm font-medium">{authStatus.user?.display_name}</span>
-              <span className="block text-xs opacity-80">{authStatus.user?.org_id}</span>
+              <span className="block text-xs opacity-90">{authStatus.user?.org_id}</span>
             </div>
             <Button variant="sfGhost" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
