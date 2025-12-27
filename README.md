@@ -22,15 +22,80 @@
 
 ## ✨ Features
 
-- 🔐 **Secure OAuth Authentication** — Connect to any Salesforce org with OAuth 2.0
-- 📊 **Interactive ERD Diagrams** — Drag, zoom, and pan to explore your schema
-- 🔗 **Smart Relationship Lines** — Visualize Lookup and Master-Detail relationships with dynamic edge routing
-- 🎯 **Cardinality Indicators** — See N:1 relationship cardinality at a glance
-- 🔍 **Powerful Search** — Filter and search through 1000+ sObjects instantly
-- 📦 **Object Type Filters** — Filter by Standard, Custom, or All objects
-- 🔄 **Auto-Layout** — Dagre-powered automatic node positioning
-- 🔲 **Compact Mode** — Toggle field visibility for a cleaner overview
-- 💾 **Position Memory** — Your node arrangements are preserved when adding objects
+### 🔐 Authentication & Security
+| | |
+|---|---|
+| **OAuth 2.0 Flow** | Secure web server flow with refresh token support |
+| **Session Management** | Encrypted cookie sessions with automatic token refresh |
+| **Multi-Org Support** | Connect to any Production, Sandbox, or Developer org |
+| **API Version Selection** | Choose from available Salesforce API versions (v62.0 - v65.0+) |
+
+### 📊 Interactive ERD Canvas
+| | |
+|---|---|
+| **Drag & Drop** | Freely position nodes on the canvas with position memory |
+| **Zoom & Pan** | Mouse wheel zoom (0.1x - 2x) and background drag panning |
+| **Auto-Layout** | One-click Dagre-powered hierarchical layout algorithm |
+| **Fit View** | Instantly center and fit all nodes in the viewport |
+| **Compact Mode** | Toggle field visibility for high-level schema overview |
+
+### 🔗 Relationship Visualization
+| | |
+|---|---|
+| **Smart Edge Routing** | Dynamic edge paths that avoid node overlaps |
+| **Relationship Types** | Dashed lines for Lookup, solid lines for Master-Detail |
+| **Cardinality Markers** | Visual N:1 indicators showing relationship direction |
+| **Color Coding** | Blue for Lookup relationships, Purple for Master-Detail |
+| **Interactive Legend** | Collapsible legend explaining all visual elements |
+
+### 🔍 Powerful Filtering & Search
+| | |
+|---|---|
+| **Instant Search** | Real-time filtering through 1000+ sObjects as you type |
+| **Namespace Filtering** | Filter by All, Standard, Custom (Local), or Packaged objects |
+| **Package Multi-Select** | When viewing packaged objects, filter by specific namespaces (npsp, npe01, etc.) |
+| **Object Type Filters** | Toggle visibility of 9 system object categories |
+
+### 🏷️ Object Classification System
+
+Intelligent badge system to quickly identify object types at a glance:
+
+| Badge | Description | Example |
+|-------|-------------|---------|
+| 🔵 `Standard` | Salesforce-provided objects | Account, Contact, Opportunity |
+| 🟣 `Custom` | Org-created custom objects | Invoice__c, Project__c |
+| 🟪 `[npsp]` | Managed package objects | npsp__General_Accounting_Unit__c |
+
+**System Object Type Badges** (hidden by default for cleaner views):
+
+| Badge | Suffix | Description |
+|-------|--------|-------------|
+| 🟠 `Feed` | *Feed | Chatter feed objects |
+| 🟢 `Share` | *Share | Sharing rule objects |
+| ⬜ `History` | *History | Field history tracking |
+| 🔴 `CDC` | *ChangeEvent | Change Data Capture events |
+| 🔷 `Event` | __e | Platform Events |
+| 🟦 `External` | __x | External Objects (OData) |
+| 🌊 `MDT` | __mdt | Custom Metadata Types |
+| 🟡 `Big` | __b | Big Objects |
+| 🟣 `Tag` | *Tag | Tagging objects |
+
+### 🎨 User Interface
+| | |
+|---|---|
+| **Resizable Sidebar** | Drag to resize the object picker (200px - 600px) |
+| **Collapsible Sections** | Expand/collapse filter sections to save space |
+| **Object Count Badge** | See selected object count and total matches |
+| **Stats Panel** | Live count of objects and relationships on canvas |
+| **Dark/Light Badges** | High-contrast badges for accessibility |
+
+### 📦 Node Details
+Each object node displays:
+- **Object name** with Standard/Custom/Package badge
+- **Key prefix** (e.g., `001` for Account)
+- **Field list** with type icons (in expanded mode)
+- **Relationship fields** highlighted with reference indicators
+- **Collapse toggle** for individual node compaction
 
 ---
 
@@ -125,19 +190,42 @@ If you prefer to run servers separately:
 
 ## 🎮 Usage
 
-1. **Connect** — Click "Connect to Salesforce" and authorize
-2. **Select Objects** — Check objects in the sidebar to add them to the canvas
-3. **Explore** — Drag nodes, zoom with scroll, pan by dragging the background
-4. **Toggle Views** — Use Compact mode to hide fields, Auto Layout to reorganize
-5. **Understand Relationships** — Dashed lines = Lookup, Solid lines = Master-Detail
+### Getting Started
+1. **🔐 Connect** — Click "Connect to Salesforce" and authorize with your org credentials
+2. **📋 Browse** — Use the sidebar to search and filter through available objects
+3. **✅ Select** — Check objects to add them to the ERD canvas
+4. **🖱️ Explore** — Drag nodes, zoom with scroll wheel, pan by dragging background
+5. **🔗 Analyze** — Follow relationship lines to understand your data model
 
-### Keyboard Shortcuts
+### Filtering Objects
+1. **Search** — Type in the search box to filter by object name or label
+2. **Namespace** — Use the dropdown to filter:
+   - `All Objects` — Show everything
+   - `Standard Only` — Salesforce-provided objects only
+   - `Custom (Local)` — Your org's custom objects (no package)
+   - `Packaged Only` — Managed package objects → then select specific namespaces
+3. **Object Types** — Expand "Object Type Filters" to show/hide system objects (Feed, Share, History, etc.)
 
-| Action | Shortcut |
-|--------|----------|
-| Fit View | Click 🎯 button |
-| Reset Layout | Click 🔄 button |
-| Toggle Compact | Click 🔲 button |
+### Canvas Controls
+
+| Button | Action | Description |
+|--------|--------|-------------|
+| 🔲 **Compact** | Toggle fields | Hide field lists for a cleaner high-level view |
+| 🔄 **Auto Layout** | Reorganize | Apply Dagre algorithm to arrange nodes hierarchically |
+| 🎯 **Fit View** | Center all | Fit all nodes in the viewport with padding |
+| ➕➖ **Zoom** | Scale view | Use controls or mouse wheel (0.1x - 2x) |
+
+### Understanding the Diagram
+
+**Relationship Lines:**
+- `── ── ──` **Dashed Blue** = Lookup relationship (optional reference)
+- `────────` **Solid Purple** = Master-Detail relationship (required, cascade delete)
+- `N` marker indicates the "many" side of the relationship
+
+**Object Badges:**
+- `Standard` = Salesforce-provided object
+- `Custom` = Org-created custom object
+- `[namespace]` = Managed package object (e.g., `[npsp]`)
 
 ---
 
@@ -215,7 +303,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-MIT © 2024
+MIT © 2024-2025
 
 ---
 
