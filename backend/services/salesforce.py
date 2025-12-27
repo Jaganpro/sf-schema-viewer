@@ -2,12 +2,14 @@
 
 from threading import Lock
 
+import httpx
 from cachetools import TTLCache
 from simple_salesforce import Salesforce
 from simple_salesforce.exceptions import SalesforceError
 
 from config import settings
 from models.schema import (
+    ApiVersionInfo,
     FieldInfo,
     ObjectBasicInfo,
     ObjectDescribe,
@@ -24,15 +26,30 @@ _cache_lock = Lock()
 class SalesforceService:
     """Service for interacting with Salesforce APIs."""
 
-    def __init__(self, access_token: str, instance_url: str):
+    def __init__(
+        self, access_token: str, instance_url: str, api_version: str | None = None
+    ):
         """Initialize with OAuth tokens.
 
         Args:
             access_token: Salesforce access token
             instance_url: Salesforce instance URL (e.g., https://na1.salesforce.com)
+            api_version: Salesforce API version (e.g., "v62.0"). If None, uses default.
         """
-        self.sf = Salesforce(instance_url=instance_url, session_id=access_token)
+        # Parse version - simple-salesforce expects "62.0" not "v62.0"
+        # Only pass version if explicitly provided to avoid issues with None
+        if api_version:
+            version = api_version.lstrip("v")
+            self.sf = Salesforce(
+                instance_url=instance_url, session_id=access_token, version=version
+            )
+        else:
+            # Let simple-salesforce use its internal default
+            self.sf = Salesforce(instance_url=instance_url, session_id=access_token)
+
         self.instance_url = instance_url
+        self.api_version = api_version or f"v{self.sf.sf_version}"
+        self.access_token = access_token
 
     def list_objects(self, use_cache: bool = True) -> list[ObjectBasicInfo]:
         """Get list of all sObjects in the org (Global Describe).
@@ -44,7 +61,8 @@ class SalesforceService:
         Returns:
             List of basic object information
         """
-        cache_key = self.instance_url
+        # Include API version in cache key since objects may differ between versions
+        cache_key = f"{self.instance_url}:{self.api_version}"
 
         # Check cache first
         if use_cache:
@@ -180,7 +198,7 @@ class SalesforceService:
                 "compositeRequest": [
                     {
                         "method": "GET",
-                        "url": f"/services/data/{settings.SF_API_VERSION}/sobjects/{name}/describe",
+                        "url": f"/services/data/{self.api_version}/sobjects/{name}/describe",
                         "referenceId": name,
                     }
                     for name in batch
@@ -220,3 +238,32 @@ class SalesforceService:
                         errors[name] = f"Unexpected error: {str(inner_e)}"
 
         return results, errors
+
+    def get_available_versions(self) -> list[ApiVersionInfo]:
+        """Get list of available Salesforce API versions.
+
+        Fetches from /services/data which returns all available API versions
+        for the Salesforce instance.
+
+        Returns:
+            List of API version information, sorted newest first.
+        """
+        response = httpx.get(
+            f"{self.instance_url}/services/data",
+            headers={"Authorization": f"Bearer {self.access_token}"},
+        )
+        response.raise_for_status()
+
+        versions = []
+        for v in response.json():
+            versions.append(
+                ApiVersionInfo(
+                    version=v["version"],
+                    label=v.get("label", f"API {v['version']}"),
+                    url=v["url"],
+                )
+            )
+
+        # Sort by version number descending (newest first)
+        versions.sort(key=lambda x: float(x.version), reverse=True)
+        return versions

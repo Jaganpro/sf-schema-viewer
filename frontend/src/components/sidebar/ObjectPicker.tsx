@@ -2,7 +2,7 @@
  * Sidebar component for searching and selecting Salesforce objects.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,11 +63,54 @@ export default function ObjectPicker() {
     setSearchTerm,
     loadObjects,
     sidebarOpen,
+    sidebarWidth,
     toggleSidebar,
+    setSidebarWidth,
     authStatus,
   } = useAppStore();
 
   const [localSearch, setLocalSearch] = useState(searchTerm);
+  const [isResizing, setIsResizing] = useState(false);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(0);
+
+  // Handle resize drag
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    startXRef.current = e.clientX;
+    startWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    // Set global cursor style during resize for smooth experience
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startXRef.current;
+      const newWidth = startWidthRef.current + deltaX;
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, setSidebarWidth]);
 
   const handleSearchChange = useCallback((value: string) => {
     setLocalSearch(value);
@@ -139,7 +182,19 @@ export default function ObjectPicker() {
   }
 
   return (
-    <div className="w-[300px] h-full bg-white border-r border-sf-border flex flex-col overflow-hidden">
+    <div
+      className="h-full bg-white border-r border-sf-border flex flex-col overflow-hidden relative"
+      style={{ width: sidebarWidth }}
+    >
+      {/* Resize handle */}
+      <div
+        className={cn(
+          'absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-sf-blue/30 transition-colors z-10',
+          isResizing && 'bg-sf-blue/50'
+        )}
+        onMouseDown={handleResizeStart}
+        title="Drag to resize"
+      />
       {/* Header */}
       <div className="px-4 py-4 border-b border-gray-200 flex justify-between items-center">
         <h2 className="text-base font-semibold text-sf-text">Objects</h2>

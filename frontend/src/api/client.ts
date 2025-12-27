@@ -3,6 +3,7 @@
  */
 
 import type {
+  ApiVersionInfo,
   AuthStatus,
   BatchDescribeResponse,
   ObjectBasicInfo,
@@ -60,20 +61,30 @@ export const api = {
 
   // Schema operations
   schema: {
+    /** Get available Salesforce API versions */
+    getApiVersions: (): Promise<ApiVersionInfo[]> =>
+      fetchJson('/api/api-versions'),
+
     /** Get list of all objects in the org */
-    listObjects: (): Promise<ObjectBasicInfo[]> =>
-      fetchJson('/api/objects'),
+    listObjects: (apiVersion?: string): Promise<ObjectBasicInfo[]> => {
+      const params = apiVersion ? `?api_version=${encodeURIComponent(apiVersion)}` : '';
+      return fetchJson(`/api/objects${params}`);
+    },
 
     /** Get full describe for a single object */
-    describeObject: (objectName: string): Promise<ObjectDescribe> =>
-      fetchJson(`/api/objects/${encodeURIComponent(objectName)}/describe`),
+    describeObject: (objectName: string, apiVersion?: string): Promise<ObjectDescribe> => {
+      const params = apiVersion ? `?api_version=${encodeURIComponent(apiVersion)}` : '';
+      return fetchJson(`/api/objects/${encodeURIComponent(objectName)}/describe${params}`);
+    },
 
     /** Describe multiple objects in one request */
-    describeObjects: (objectNames: string[]): Promise<BatchDescribeResponse> =>
-      fetchJson('/api/objects/describe', {
+    describeObjects: (objectNames: string[], apiVersion?: string): Promise<BatchDescribeResponse> => {
+      const params = apiVersion ? `?api_version=${encodeURIComponent(apiVersion)}` : '';
+      return fetchJson(`/api/objects/describe${params}`, {
         method: 'POST',
         body: JSON.stringify({ object_names: objectNames }),
-      }),
+      });
+    },
   },
 };
 

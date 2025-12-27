@@ -71,6 +71,12 @@ export interface BatchDescribeResponse {
   errors?: Record<string, string>;
 }
 
+export interface ApiVersionInfo {
+  version: string;  // e.g., "62.0"
+  label: string;    // e.g., "Winter '25"
+  url: string;      // e.g., "/services/data/v62.0"
+}
+
 // Re-export component types for convenience
 export type { ObjectNodeData, ObjectNodeType } from '../components/flow/ObjectNode';
 export type { RelationshipEdgeData, RelationshipEdgeType } from '../components/flow/SmartEdge';

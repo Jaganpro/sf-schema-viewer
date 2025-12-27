@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import type { Node, Edge } from '@xyflow/react';
 import type {
+  ApiVersionInfo,
   AuthStatus,
   ObjectBasicInfo,
   ObjectDescribe,
@@ -19,6 +20,11 @@ interface AppState {
   authStatus: AuthStatus | null;
   isLoadingAuth: boolean;
 
+  // API version state
+  apiVersion: string | null;  // Selected version (e.g., "v62.0"), null = use default
+  availableApiVersions: ApiVersionInfo[];
+  isLoadingApiVersions: boolean;
+
   // Schema state
   availableObjects: ObjectBasicInfo[];
   selectedObjectNames: string[];
@@ -32,6 +38,7 @@ interface AppState {
 
   // UI state
   sidebarOpen: boolean;
+  sidebarWidth: number;
   namespaceFilter: 'all' | 'standard' | 'custom';
   searchTerm: string;
 
@@ -41,12 +48,15 @@ interface AppState {
   // Actions
   checkAuth: () => Promise<void>;
   logout: () => Promise<void>;
+  loadApiVersions: () => Promise<void>;
+  setApiVersion: (version: string | null) => void;
   loadObjects: () => Promise<void>;
   selectObjects: (names: string[]) => Promise<void>;
   addObject: (name: string) => Promise<void>;
   removeObject: (name: string) => void;
   applyLayout: () => void;
   toggleSidebar: () => void;
+  setSidebarWidth: (width: number) => void;
   setNamespaceFilter: (filter: 'all' | 'standard' | 'custom') => void;
   setSearchTerm: (term: string) => void;
   toggleNodeCollapse: (nodeId: string) => void;
@@ -60,6 +70,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
   authStatus: null,
   isLoadingAuth: true,
+  apiVersion: null,
+  availableApiVersions: [],
+  isLoadingApiVersions: false,
   availableObjects: [],
   selectedObjectNames: [],
   describedObjects: new Map(),
@@ -68,6 +81,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   nodes: [],
   edges: [],
   sidebarOpen: true,
+  sidebarWidth: 300,
   namespaceFilter: 'all',
   searchTerm: '',
   error: null,
@@ -87,6 +101,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     await api.auth.logout();
     set({
       authStatus: { is_authenticated: false },
+      apiVersion: null,
+      availableApiVersions: [],
       availableObjects: [],
       selectedObjectNames: [],
       describedObjects: new Map(),
@@ -95,10 +111,57 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
+  loadApiVersions: async () => {
+    set({ isLoadingApiVersions: true });
+    try {
+      const versions = await api.schema.getApiVersions();
+      // Default to a known stable version (v61.0 Spring '24 or v62.0 Winter '25)
+      // Fall back to latest if stable version not found
+      const { apiVersion } = get();
+      if (!apiVersion && versions.length > 0) {
+        const stableVersions = ['61.0', '62.0', '60.0'];
+        const stable = versions.find((v) => stableVersions.includes(v.version));
+        const defaultVersion = stable ? `v${stable.version}` : `v${versions[0].version}`;
+        set({
+          availableApiVersions: versions,
+          apiVersion: defaultVersion,
+          isLoadingApiVersions: false,
+        });
+      } else {
+        set({
+          availableApiVersions: versions,
+          isLoadingApiVersions: false,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load API versions';
+      set({ isLoadingApiVersions: false, error: message });
+    }
+  },
+
+  setApiVersion: (version: string | null) => {
+    const { apiVersion } = get();
+    if (version === apiVersion) return; // No change
+
+    // Clear cached data since objects may differ between versions
+    set({
+      apiVersion: version,
+      availableObjects: [],
+      selectedObjectNames: [],
+      describedObjects: new Map(),
+      nodes: [],
+      edges: [],
+    });
+
+    // Reload objects with new version
+    get().loadObjects();
+  },
+
   loadObjects: async () => {
+    const { apiVersion } = get();
     set({ isLoadingObjects: true, error: null });
     try {
-      const objects = await api.schema.listObjects();
+      const objects = await api.schema.listObjects(apiVersion ?? undefined);
       set({ availableObjects: objects, isLoadingObjects: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load objects';
@@ -107,7 +170,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectObjects: async (names: string[]) => {
-    const { describedObjects } = get();
+    const { describedObjects, apiVersion } = get();
 
     // Find objects that need to be described
     const toDescribe = names.filter((name) => !describedObjects.has(name));
@@ -115,7 +178,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (toDescribe.length > 0) {
       set({ isLoadingDescribe: true, error: null });
       try {
-        const response = await api.schema.describeObjects(toDescribe);
+        const response = await api.schema.describeObjects(toDescribe, apiVersion ?? undefined);
         const newDescribed = new Map(describedObjects);
         for (const obj of response.objects) {
           newDescribed.set(obj.name, obj);
@@ -135,7 +198,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addObject: async (name: string) => {
-    const { selectedObjectNames, describedObjects, nodes } = get();
+    const { selectedObjectNames, describedObjects, nodes, apiVersion } = get();
 
     if (selectedObjectNames.includes(name)) {
       return; // Already selected
@@ -145,7 +208,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!describedObjects.has(name)) {
       set({ isLoadingDescribe: true, error: null });
       try {
-        const describe = await api.schema.describeObject(name);
+        const describe = await api.schema.describeObject(name, apiVersion ?? undefined);
         const newDescribed = new Map(describedObjects);
         newDescribed.set(name, describe);
         set({ describedObjects: newDescribed });
@@ -244,6 +307,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleSidebar: () => {
     set((state) => ({ sidebarOpen: !state.sidebarOpen }));
+  },
+
+  setSidebarWidth: (width: number) => {
+    // Clamp width between min and max bounds
+    const clampedWidth = Math.min(Math.max(width, 200), 600);
+    set({ sidebarWidth: clampedWidth });
   },
 
   setNamespaceFilter: (filter) => {

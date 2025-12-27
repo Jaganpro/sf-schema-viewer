@@ -11,19 +11,23 @@ import { ErrorBanner } from './components/ui/ErrorBanner';
 import { useAppStore } from './store';
 
 function App() {
-  const { checkAuth, loadObjects, authStatus } = useAppStore();
+  const { checkAuth, loadObjects, loadApiVersions, authStatus } = useAppStore();
 
   // Check authentication status on mount
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
-  // Load objects when authenticated
+  // Load API versions first, then objects when authenticated
   useEffect(() => {
-    if (authStatus?.is_authenticated) {
-      loadObjects();
-    }
-  }, [authStatus?.is_authenticated, loadObjects]);
+    const loadData = async () => {
+      if (authStatus?.is_authenticated) {
+        await loadApiVersions();
+        loadObjects();
+      }
+    };
+    loadData();
+  }, [authStatus?.is_authenticated, loadApiVersions, loadObjects]);
 
   return (
     <ReactFlowProvider>

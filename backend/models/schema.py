@@ -71,3 +71,11 @@ class BatchDescribeResponse(BaseModel):
 
     objects: list[ObjectDescribe]
     errors: dict[str, str] | None = None  # Object name -> error message
+
+
+class ApiVersionInfo(BaseModel):
+    """Information about an available Salesforce API version."""
+
+    version: str  # e.g., "62.0"
+    label: str  # e.g., "Winter '25"
+    url: str  # e.g., "/services/data/v62.0"
