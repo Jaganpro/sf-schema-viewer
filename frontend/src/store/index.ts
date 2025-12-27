@@ -131,6 +131,7 @@ interface AppState {
   setEdges: (edges: Edge[]) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
+  clearAllSelections: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -633,4 +634,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   setEdges: (edges) => set({ edges }),
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
+
+  // Clear all selections - objects, fields, focused object, and ERD
+  clearAllSelections: () => {
+    set({
+      selectedObjectNames: [],
+      selectedFieldsByObject: new Map(),
+      focusedObjectName: null,
+      nodes: [],
+      edges: [],
+    });
+  },
 }));

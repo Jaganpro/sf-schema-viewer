@@ -142,6 +142,7 @@ export default function ObjectPicker() {
     addObject,
     removeObject,
     selectObjects,
+    clearAllSelections,
     toggleClassificationFilter,
     toggleNamespace,
     setSearchTerm,
@@ -267,6 +268,12 @@ export default function ObjectPicker() {
     });
   }, [availableObjects, classificationFilters, selectedNamespaces, objectTypeFilters, searchTerm, selectedObjectNames]);
 
+  // Calculate how many selected objects are hidden by current filters
+  const selectedButHiddenCount = useMemo(() => {
+    const visibleObjectNames = new Set(filteredObjects.map(obj => obj.name));
+    return selectedObjectNames.filter(name => !visibleObjectNames.has(name)).length;
+  }, [filteredObjects, selectedObjectNames]);
+
   const handleToggleObject = useCallback((objectName: string) => {
     if (selectedObjectNames.includes(objectName)) {
       removeObject(objectName);
@@ -284,8 +291,8 @@ export default function ObjectPicker() {
   }, [filteredObjects, selectedObjectNames, selectObjects]);
 
   const handleClearAll = useCallback(() => {
-    selectObjects([]);
-  }, [selectObjects]);
+    clearAllSelections();
+  }, [clearAllSelections]);
 
   if (!sidebarOpen) {
     return (
@@ -466,6 +473,11 @@ export default function ObjectPicker() {
           {selectedObjectNames.length > 0 && (
             <div className="px-4 py-2 bg-blue-50 text-sf-blue text-sm font-medium">
               {selectedObjectNames.length} object{selectedObjectNames.length !== 1 ? 's' : ''} selected
+              {selectedButHiddenCount > 0 && (
+                <span className="text-sf-text-muted font-normal ml-1">
+                  ({selectedButHiddenCount} hidden by filters)
+                </span>
+              )}
             </div>
           )}
 

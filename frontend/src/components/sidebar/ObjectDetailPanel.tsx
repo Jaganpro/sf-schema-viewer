@@ -56,6 +56,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     availableObjects,
     describedObjects,
     addObject,
+    removeObject,
+    selectObjects,
     selectedObjectNames,
     describeObject,
     isLoadingDescribe,
@@ -75,6 +77,12 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       describeObject(objectName);
     }
   }, [objectName, describedObjects, describeObject]);
+
+  // Reset child relationship selections when switching to a different object
+  useEffect(() => {
+    setSelectedRels(new Set());
+    setRelSearch('');
+  }, [objectName]);
 
   // Get object basic info from available objects
   const objectInfo = useMemo(
@@ -121,28 +129,59 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   // Helper to generate unique key for a relationship
   const getRelKey = (rel: RelationshipInfo) => `${rel.child_object}.${rel.field}`;
 
-  // Toggle relationship selection
-  const toggleRelSelection = (key: string) => {
-    setSelectedRels((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
+  // Toggle relationship selection - also adds/removes child object from diagram
+  const toggleRelSelection = (rel: RelationshipInfo) => {
+    const key = getRelKey(rel);
+    const isCurrentlySelected = selectedRels.has(key);
+
+    if (isCurrentlySelected) {
+      // Unchecking - remove from selection and diagram
+      setSelectedRels((prev) => {
+        const next = new Set(prev);
         next.delete(key);
-      } else {
+        return next;
+      });
+      removeObject(rel.child_object);
+    } else {
+      // Checking - add to selection and diagram
+      setSelectedRels((prev) => {
+        const next = new Set(prev);
         next.add(key);
-      }
-      return next;
-    });
+        return next;
+      });
+      addObject(rel.child_object);
+    }
   };
 
-  // Select all relationships
+  // Select all relationships - adds all child objects to diagram using batch API
   const selectAllRels = () => {
     if (objectDescribe?.child_relationships) {
+      // Get unique child object names (some objects may appear in multiple relationships)
+      const childObjectNames = [
+        ...new Set(objectDescribe.child_relationships.map((rel) => rel.child_object))
+      ];
+
+      // Merge with currently selected objects to preserve existing selections
+      const allObjectNames = [
+        ...new Set([...selectedObjectNames, ...childObjectNames])
+      ];
+
+      // Single batch API call - no race conditions!
+      selectObjects(allObjectNames);
+
+      // Update local selection state
       setSelectedRels(new Set(objectDescribe.child_relationships.map(getRelKey)));
     }
   };
 
-  // Clear relationship selection
+  // Clear relationship selection - removes all selected child objects from diagram
   const clearRelSelection = () => {
+    // Remove all previously selected child objects from diagram
+    selectedRels.forEach((key) => {
+      const childObject = key.split('.')[0]; // Extract object name from "Object.Field"
+      removeObject(childObject);
+    });
+    // Clear selection state
     setSelectedRels(new Set());
   };
 
@@ -436,7 +475,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                         <div className="flex items-center gap-2">
                           <Checkbox
                             checked={selectedRels.has(relKey)}
-                            onCheckedChange={() => toggleRelSelection(relKey)}
+                            onCheckedChange={() => toggleRelSelection(rel)}
                             className="shrink-0"
                           />
                           <div className="flex-1 min-w-0">
