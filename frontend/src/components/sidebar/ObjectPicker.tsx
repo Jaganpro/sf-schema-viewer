@@ -3,7 +3,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, RefreshCw, Search, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, RefreshCw, Search, Zap, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,6 +26,32 @@ import { cn } from '@/lib/utils';
 import { useAppStore } from '../../store';
 import type { ObjectBasicInfo } from '../../types/schema';
 
+/**
+ * Configuration for object type filters.
+ * Each filter matches objects by their API name suffix pattern.
+ */
+const OBJECT_TYPE_FILTERS = [
+  { key: 'feed', label: 'Feed Objects', badge: 'Feed', variant: 'feed', pattern: (n: string) => n.endsWith('Feed') },
+  { key: 'share', label: 'Share Objects', badge: 'Share', variant: 'share', pattern: (n: string) => n.endsWith('Share') },
+  { key: 'history', label: 'History Objects', badge: 'History', variant: 'history', pattern: (n: string) => n.endsWith('History') },
+  { key: 'changeEvent', label: 'Change Events', badge: 'CDC', variant: 'changeEvent', pattern: (n: string) => n.endsWith('ChangeEvent') },
+  { key: 'platformEvent', label: 'Platform Events', badge: 'Event', variant: 'platformEvent', pattern: (n: string) => n.endsWith('__e') },
+  { key: 'externalObject', label: 'External Objects', badge: 'External', variant: 'externalObject', pattern: (n: string) => n.endsWith('__x') },
+  { key: 'customMetadata', label: 'Custom Metadata', badge: 'MDT', variant: 'customMetadata', pattern: (n: string) => n.endsWith('__mdt') },
+  { key: 'bigObject', label: 'Big Objects', badge: 'Big', variant: 'bigObject', pattern: (n: string) => n.endsWith('__b') },
+  { key: 'tag', label: 'Tag Objects', badge: 'Tag', variant: 'tag', pattern: (n: string) => n.endsWith('Tag') },
+] as const;
+
+/** Get the object type info for an object based on its name pattern */
+function getObjectTypeInfo(objectName: string) {
+  for (const filter of OBJECT_TYPE_FILTERS) {
+    if (filter.pattern(objectName)) {
+      return { badge: filter.badge, variant: filter.variant };
+    }
+  }
+  return null;
+}
+
 interface ObjectItemProps {
   object: ObjectBasicInfo;
   isSelected: boolean;
@@ -34,6 +60,7 @@ interface ObjectItemProps {
 
 function ObjectItem({ object, isSelected, onToggle }: ObjectItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const typeInfo = getObjectTypeInfo(object.name);
 
   const handleExpandClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -83,7 +110,16 @@ function ObjectItem({ object, isSelected, onToggle }: ObjectItemProps) {
                   </TooltipContent>
                 </Tooltip>
               )}
-              {object.custom && <Badge variant="custom">Custom</Badge>}
+              {/* Object classification badges */}
+              {object.custom ? (
+                <Badge variant="custom">Custom</Badge>
+              ) : (
+                <Badge variant="standard">Standard</Badge>
+              )}
+              {/* Object type badge (Feed, Share, History, etc.) */}
+              {typeInfo && (
+                <Badge variant={typeInfo.variant as any}>{typeInfo.badge}</Badge>
+              )}
             </div>
             {/* API name row with expand chevron */}
             <div className="flex items-center gap-1">
@@ -152,11 +188,17 @@ export default function ObjectPicker() {
     isLoadingObjects,
     namespaceFilter,
     searchTerm,
+    objectTypeFilters,
+    filterSectionExpanded,
     addObject,
     removeObject,
     selectObjects,
     setNamespaceFilter,
     setSearchTerm,
+    toggleObjectTypeFilter,
+    toggleFilterSection,
+    showAllObjectTypes,
+    hideAllSystemObjects,
     loadObjects,
     sidebarOpen,
     sidebarWidth,
@@ -213,15 +255,39 @@ export default function ObjectPicker() {
     setSearchTerm(value);
   }, [setSearchTerm]);
 
+  // Calculate how many objects are hidden by type filters
+  const hiddenCount = useMemo(() => {
+    return availableObjects.filter((obj) => {
+      for (const config of OBJECT_TYPE_FILTERS) {
+        if (!objectTypeFilters[config.key] && config.pattern(obj.name)) {
+          return true;
+        }
+      }
+      return false;
+    }).length;
+  }, [availableObjects, objectTypeFilters]);
+
   const filteredObjects = useMemo(() => {
     let filtered = availableObjects;
 
+    // Namespace filter (standard/custom)
     if (namespaceFilter === 'standard') {
       filtered = filtered.filter((obj) => !obj.custom);
     } else if (namespaceFilter === 'custom') {
       filtered = filtered.filter((obj) => obj.custom);
     }
 
+    // Object type filters - hide objects matching patterns when filter is OFF
+    filtered = filtered.filter((obj) => {
+      for (const config of OBJECT_TYPE_FILTERS) {
+        if (!objectTypeFilters[config.key] && config.pattern(obj.name)) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    // Search filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -231,6 +297,7 @@ export default function ObjectPicker() {
       );
     }
 
+    // Sort: selected first, then alphabetically
     const selectedSet = new Set(selectedObjectNames);
     return [...filtered].sort((a, b) => {
       const aSelected = selectedSet.has(a.name);
@@ -239,7 +306,7 @@ export default function ObjectPicker() {
       if (!aSelected && bSelected) return 1;
       return a.label.localeCompare(b.label);
     });
-  }, [availableObjects, namespaceFilter, searchTerm, selectedObjectNames]);
+  }, [availableObjects, namespaceFilter, objectTypeFilters, searchTerm, selectedObjectNames]);
 
   const handleToggleObject = useCallback((objectName: string) => {
     if (selectedObjectNames.includes(objectName)) {
@@ -330,7 +397,7 @@ export default function ObjectPicker() {
             )}
           </div>
 
-          {/* Filter */}
+          {/* Namespace Filter */}
           <div className="px-4 pb-3">
             <Select
               value={namespaceFilter}
@@ -345,6 +412,62 @@ export default function ObjectPicker() {
                 <SelectItem value="custom">Custom Only</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Object Type Filters - Collapsible */}
+          <div className="px-4 pb-3 border-b border-gray-100">
+            <button
+              onClick={toggleFilterSection}
+              className="flex items-center justify-between w-full py-2 text-sm font-medium text-sf-text hover:text-sf-blue transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Object Type Filters
+                {hiddenCount > 0 && (
+                  <span className="text-xs text-sf-text-muted font-normal">
+                    ({hiddenCount} hidden)
+                  </span>
+                )}
+              </span>
+              {filterSectionExpanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+
+            {filterSectionExpanded && (
+              <div className="mt-2 space-y-2 pl-6">
+                {OBJECT_TYPE_FILTERS.map((filter) => (
+                  <label
+                    key={filter.key}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={objectTypeFilters[filter.key]}
+                      onCheckedChange={() => toggleObjectTypeFilter(filter.key)}
+                    />
+                    <Badge variant={filter.variant as any}>{filter.badge}</Badge>
+                    <span className="text-sm text-sf-text">{filter.label}</span>
+                  </label>
+                ))}
+                <div className="flex gap-2 pt-2 text-xs">
+                  <button
+                    onClick={showAllObjectTypes}
+                    className="text-sf-blue hover:underline"
+                  >
+                    Show All
+                  </button>
+                  <span className="text-sf-text-muted">|</span>
+                  <button
+                    onClick={hideAllSystemObjects}
+                    className="text-sf-blue hover:underline"
+                  >
+                    Hide System
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Actions */}

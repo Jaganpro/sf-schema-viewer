@@ -15,6 +15,35 @@ import { api } from '../api/client';
 import { transformToFlowElements } from '../utils/transformers';
 import { applyDagreLayout } from '../utils/layout';
 
+/**
+ * Object type filter state - controls visibility of system object types.
+ * true = show the object type, false = hide it
+ */
+interface ObjectTypeFilters {
+  feed: boolean;           // *Feed objects (Chatter feeds)
+  share: boolean;          // *Share objects (sharing rules)
+  history: boolean;        // *History objects (field history)
+  changeEvent: boolean;    // *ChangeEvent objects (CDC)
+  platformEvent: boolean;  // *__e objects (platform events)
+  externalObject: boolean; // *__x objects (external objects)
+  customMetadata: boolean; // *__mdt objects (custom metadata types)
+  bigObject: boolean;      // *__b objects (big objects)
+  tag: boolean;            // *Tag objects (tagging)
+}
+
+/** Default filter state - all system objects hidden by default */
+const DEFAULT_OBJECT_TYPE_FILTERS: ObjectTypeFilters = {
+  feed: false,
+  share: false,
+  history: false,
+  changeEvent: false,
+  platformEvent: false,
+  externalObject: false,
+  customMetadata: false,
+  bigObject: false,
+  tag: false,
+};
+
 interface AppState {
   // Auth state
   authStatus: AuthStatus | null;
@@ -41,6 +70,8 @@ interface AppState {
   sidebarWidth: number;
   namespaceFilter: 'all' | 'standard' | 'custom';
   searchTerm: string;
+  objectTypeFilters: ObjectTypeFilters;
+  filterSectionExpanded: boolean;
 
   // Error state
   error: string | null;
@@ -59,6 +90,10 @@ interface AppState {
   setSidebarWidth: (width: number) => void;
   setNamespaceFilter: (filter: 'all' | 'standard' | 'custom') => void;
   setSearchTerm: (term: string) => void;
+  toggleObjectTypeFilter: (filter: keyof ObjectTypeFilters) => void;
+  toggleFilterSection: () => void;
+  showAllObjectTypes: () => void;
+  hideAllSystemObjects: () => void;
   toggleNodeCollapse: (nodeId: string) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
@@ -84,6 +119,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarWidth: 300,
   namespaceFilter: 'all',
   searchTerm: '',
+  objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS },
+  filterSectionExpanded: false,
   error: null,
 
   // Actions
@@ -321,6 +358,39 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setSearchTerm: (term) => {
     set({ searchTerm: term });
+  },
+
+  toggleObjectTypeFilter: (filter) => {
+    set((state) => ({
+      objectTypeFilters: {
+        ...state.objectTypeFilters,
+        [filter]: !state.objectTypeFilters[filter],
+      },
+    }));
+  },
+
+  toggleFilterSection: () => {
+    set((state) => ({ filterSectionExpanded: !state.filterSectionExpanded }));
+  },
+
+  showAllObjectTypes: () => {
+    set({
+      objectTypeFilters: {
+        feed: true,
+        share: true,
+        history: true,
+        changeEvent: true,
+        platformEvent: true,
+        externalObject: true,
+        customMetadata: true,
+        bigObject: true,
+        tag: true,
+      },
+    });
+  },
+
+  hideAllSystemObjects: () => {
+    set({ objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS } });
   },
 
   toggleNodeCollapse: (nodeId: string) => {
