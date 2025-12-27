@@ -3,7 +3,7 @@
  * Appears when an object is focused in the object list.
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   X,
   Search,
@@ -66,10 +66,56 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     selectAllFields,
     clearFieldSelection,
     selectOnlyLookups,
+    detailPanelWidth,
+    setDetailPanelWidth,
   } = useAppStore();
   const [fieldSearch, setFieldSearch] = useState('');
   const [relSearch, setRelSearch] = useState('');
   const [selectedRels, setSelectedRels] = useState<Set<string>>(new Set());
+
+  // Resize state
+  const [isResizing, setIsResizing] = useState(false);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(0);
+
+  // Handle resize drag start
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    startXRef.current = e.clientX;
+    startWidthRef.current = detailPanelWidth;
+  }, [detailPanelWidth]);
+
+  // Handle resize drag
+  useEffect(() => {
+    if (!isResizing) return;
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Handle is on RIGHT edge (drag right = wider)
+      const deltaX = e.clientX - startXRef.current;
+      const newWidth = startWidthRef.current + deltaX;
+      setDetailPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, setDetailPanelWidth]);
 
   // Auto-fetch when panel opens for an undescribed object
   useEffect(() => {
@@ -187,7 +233,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
 
   if (!objectInfo) {
     return (
-      <div className="w-[350px] h-full flex flex-col">
+      <div className="h-full flex flex-col" style={{ width: detailPanelWidth }}>
         <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
           <span className="text-sm text-sf-text-muted">Object not found</span>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -201,7 +247,20 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   const classification = getClassification(objectInfo.custom, objectInfo.namespace_prefix);
 
   return (
-    <div className="w-[350px] h-full flex flex-col bg-white">
+    <div
+      className="h-full flex flex-col bg-white relative"
+      style={{ width: detailPanelWidth }}
+    >
+      {/* Resize handle on RIGHT edge */}
+      <div
+        className={cn(
+          'absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-sf-blue/30 transition-colors z-10',
+          isResizing && 'bg-sf-blue/50'
+        )}
+        onMouseDown={handleResizeStart}
+        title="Drag to resize"
+      />
+
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200">
         <div className="flex items-start justify-between gap-2">

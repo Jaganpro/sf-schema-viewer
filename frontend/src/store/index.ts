@@ -85,6 +85,7 @@ interface AppState {
   // UI state
   sidebarOpen: boolean;
   sidebarWidth: number;
+  detailPanelWidth: number;
   classificationFilters: ClassificationFilters;  // Multi-select classification (Standard, Custom, Packaged)
   selectedNamespaces: string[];  // For filtering specific package namespaces when packaged is ON
   searchTerm: string;
@@ -110,6 +111,7 @@ interface AppState {
   applyLayout: () => void;
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
+  setDetailPanelWidth: (width: number) => void;
   toggleClassificationFilter: (filter: keyof ClassificationFilters) => void;
   setSelectedNamespaces: (namespaces: string[]) => void;
   toggleNamespace: (namespace: string) => void;
@@ -150,6 +152,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   edges: [],
   sidebarOpen: true,
   sidebarWidth: 300,
+  detailPanelWidth: 350,
   classificationFilters: { ...DEFAULT_CLASSIFICATION_FILTERS },
   selectedNamespaces: [],
   searchTerm: '',
@@ -392,6 +395,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Clamp width between min and max bounds
     const clampedWidth = Math.min(Math.max(width, 200), 600);
     set({ sidebarWidth: clampedWidth });
+  },
+
+  setDetailPanelWidth: (width: number) => {
+    // Clamp width between min and max bounds
+    const clampedWidth = Math.min(Math.max(width, 280), 500);
+    set({ detailPanelWidth: clampedWidth });
   },
 
   toggleClassificationFilter: (filter) => {
