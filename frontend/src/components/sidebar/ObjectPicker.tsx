@@ -3,7 +3,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X, RefreshCw, Search, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, X, RefreshCw, Search, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -157,6 +157,8 @@ export default function ObjectPicker() {
     authStatus,
     focusedObjectName,
     setFocusedObject,
+    advancedFiltersExpanded,
+    toggleAdvancedFilters,
   } = useAppStore();
 
   const [localSearch, setLocalSearch] = useState(searchTerm);
@@ -394,7 +396,7 @@ export default function ObjectPicker() {
                       key={ns}
                       onClick={() => toggleNamespace(ns)}
                       className={cn(
-                        'px-2 py-0.5 text-xs rounded border transition-colors',
+                        'px-2 py-0.5 text-xs rounded-sm border transition-colors',
                         selectedNamespaces.length === 0 || selectedNamespaces.includes(ns)
                           ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
                           : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
@@ -408,38 +410,54 @@ export default function ObjectPicker() {
             )}
           </div>
 
-          {/* System Type Filter Chips */}
+          {/* Advanced Filters - Collapsible */}
           <div className="px-4 py-3 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-sf-text-muted font-medium">Include System:</span>
-              <div className="flex gap-2 text-xs">
-                <button
-                  onClick={showAllObjectTypes}
-                  className="text-sf-blue hover:underline"
-                >
-                  All
-                </button>
-                <span className="text-sf-text-muted">|</span>
-                <button
-                  onClick={hideAllSystemObjects}
-                  className="text-sf-blue hover:underline"
-                >
-                  Reset
-                </button>
+            <button
+              onClick={toggleAdvancedFilters}
+              className="flex items-center justify-between w-full"
+            >
+              <div className="flex items-center gap-1.5">
+                {advancedFiltersExpanded ? (
+                  <ChevronDown className="h-3.5 w-3.5 text-sf-text-muted" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 text-sf-text-muted" />
+                )}
+                <span className="text-xs text-sf-text-muted font-medium">Advanced Filters</span>
               </div>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {OBJECT_TYPE_FILTERS.map((filter) => (
-                <FilterChip
-                  key={filter.key}
-                  label={filter.badge}
-                  active={objectTypeFilters[filter.key]}
-                  onClick={() => toggleObjectTypeFilter(filter.key)}
-                  variant="system"
-                  badgeVariant={filter.variant as any}
-                />
-              ))}
-            </div>
+              {advancedFiltersExpanded && (
+                <div className="flex gap-2 text-xs">
+                  <span
+                    role="button"
+                    onClick={(e) => { e.stopPropagation(); showAllObjectTypes(); }}
+                    className="text-sf-blue hover:underline cursor-pointer"
+                  >
+                    All
+                  </span>
+                  <span className="text-sf-text-muted">|</span>
+                  <span
+                    role="button"
+                    onClick={(e) => { e.stopPropagation(); hideAllSystemObjects(); }}
+                    className="text-sf-blue hover:underline cursor-pointer"
+                  >
+                    Reset
+                  </span>
+                </div>
+              )}
+            </button>
+            {advancedFiltersExpanded && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {OBJECT_TYPE_FILTERS.map((filter) => (
+                  <FilterChip
+                    key={filter.key}
+                    label={filter.label}
+                    active={objectTypeFilters[filter.key]}
+                    onClick={() => toggleObjectTypeFilter(filter.key)}
+                    variant="system"
+                    badgeVariant={filter.variant as any}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Object count indicator */}

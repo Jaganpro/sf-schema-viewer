@@ -92,6 +92,7 @@ interface AppState {
   objectTypeFilters: ObjectTypeFilters;
   showLegend: boolean;
   focusedObjectName: string | null;  // Object shown in detail panel
+  advancedFiltersExpanded: boolean;  // Collapsible advanced filters section
 
   // Field selection state - which fields to show in ERD for each object
   selectedFieldsByObject: Map<string, Set<string>>;
@@ -121,6 +122,7 @@ interface AppState {
   hideAllSystemObjects: () => void;
   toggleLegend: () => void;
   setFocusedObject: (name: string | null) => void;
+  toggleAdvancedFilters: () => void;
   // Field selection actions
   describeObject: (name: string) => Promise<void>;  // Fetch-only, doesn't add to ERD
   toggleFieldSelection: (objectName: string, fieldName: string) => void;
@@ -159,6 +161,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS },
   showLegend: true,
   focusedObjectName: null,
+  advancedFiltersExpanded: false,  // Default collapsed
   selectedFieldsByObject: new Map(),
   error: null,
 
@@ -471,6 +474,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleLegend: () => {
     set((state) => ({ showLegend: !state.showLegend }));
+  },
+
+  toggleAdvancedFilters: () => {
+    set((state) => ({ advancedFiltersExpanded: !state.advancedFiltersExpanded }));
   },
 
   setFocusedObject: (name: string | null) => {

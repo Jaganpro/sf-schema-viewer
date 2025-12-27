@@ -164,7 +164,7 @@ export default function SchemaFlow() {
           <button
             onClick={() => setCompactMode(!compactMode)}
             className={cn(
-              'bg-white border border-gray-300 rounded-md px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]',
+              'bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]',
               compactMode
                 ? 'bg-sf-blue border-sf-blue text-white hover:bg-sf-blue-dark'
                 : 'text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue'
@@ -185,7 +185,7 @@ export default function SchemaFlow() {
           </button>
           <button
             onClick={handleReLayout}
-            className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
+            className="bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
             title="Re-apply auto-layout"
           >
             <RefreshCcw className="h-4 w-4" />
@@ -193,7 +193,7 @@ export default function SchemaFlow() {
           </button>
           <button
             onClick={() => fitView({ padding: 0.2, duration: 300 })}
-            className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
+            className="bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
             title="Fit all nodes in view"
           >
             <Focus className="h-4 w-4" />
@@ -204,7 +204,7 @@ export default function SchemaFlow() {
         {/* Empty state */}
         {nodes.length === 0 && !isLoadingDescribe && (
           <Panel position="top-center" className="pointer-events-none">
-            <div className="bg-white border border-gray-300 rounded-xl px-12 py-8 text-center shadow-sm">
+            <div className="bg-white border border-gray-300 rounded-sm px-12 py-8 text-center shadow-sm">
               <BarChart3 className="h-12 w-12 mx-auto mb-4 text-sf-blue" />
               <h3 className="m-0 mb-2 text-sf-text text-lg font-semibold">No Objects Selected</h3>
               <p className="m-0 text-sf-text-muted text-sm">
@@ -217,7 +217,7 @@ export default function SchemaFlow() {
         {/* Loading state */}
         {isLoadingDescribe && (
           <Panel position="top-center" className="pointer-events-none">
-            <div className="bg-white border border-gray-300 rounded-lg px-6 py-3 flex items-center gap-3 shadow-sm text-sm text-sf-text">
+            <div className="bg-white border border-gray-300 rounded-sm px-6 py-3 flex items-center gap-3 shadow-sm text-sm text-sf-text">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Loading schema...</span>
             </div>
@@ -227,7 +227,7 @@ export default function SchemaFlow() {
         {/* Legend with toggle */}
         <Panel position="bottom-right">
           {showLegend ? (
-            <div className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden min-w-[180px]">
+            <div className="bg-white border border-gray-200 rounded-sm shadow-md overflow-hidden min-w-[180px]">
               {/* Header with close button */}
               <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
                 <h4 className="m-0 text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold">
@@ -262,57 +262,45 @@ export default function SchemaFlow() {
 
                 {/* Primary object types */}
                 <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="standard" className="flex-shrink-0">Standard</Badge>
-                    <span>Standard Objects</span>
+                  <div className="flex justify-center">
+                    <Badge variant="standard" className="min-w-[130px] justify-center">Standard Objects</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="custom" className="flex-shrink-0">Custom</Badge>
-                    <span>Custom Objects</span>
+                  <div className="flex justify-center">
+                    <Badge variant="custom" className="min-w-[130px] justify-center">Custom Objects</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="namespace" className="flex-shrink-0">pkg</Badge>
-                    <span>Managed Package</span>
+                  <div className="flex justify-center">
+                    <Badge variant="namespace" className="min-w-[130px] justify-center">Managed Package</Badge>
                   </div>
                 </div>
 
                 {/* System object types */}
                 <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="feed" className="flex-shrink-0">Feed</Badge>
-                    <span>Feed Objects</span>
+                  <div className="flex justify-center">
+                    <Badge variant="feed" className="min-w-[130px] justify-center">Feed Objects</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="share" className="flex-shrink-0">Share</Badge>
-                    <span>Share Objects</span>
+                  <div className="flex justify-center">
+                    <Badge variant="share" className="min-w-[130px] justify-center">Share Objects</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="history" className="flex-shrink-0">History</Badge>
-                    <span>History Objects</span>
+                  <div className="flex justify-center">
+                    <Badge variant="history" className="min-w-[130px] justify-center">History Objects</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="changeEvent" className="flex-shrink-0">CDC</Badge>
-                    <span>Change Events</span>
+                  <div className="flex justify-center">
+                    <Badge variant="changeEvent" className="min-w-[130px] justify-center">Change Events</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="platformEvent" className="flex-shrink-0">Event</Badge>
-                    <span>Platform Events</span>
+                  <div className="flex justify-center">
+                    <Badge variant="platformEvent" className="min-w-[130px] justify-center">Platform Events</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="externalObject" className="flex-shrink-0">External</Badge>
-                    <span>External Objects</span>
+                  <div className="flex justify-center">
+                    <Badge variant="externalObject" className="min-w-[130px] justify-center">External Objects</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="customMetadata" className="flex-shrink-0">MDT</Badge>
-                    <span>Custom Metadata</span>
+                  <div className="flex justify-center">
+                    <Badge variant="customMetadata" className="min-w-[130px] justify-center">Custom Metadata</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="bigObject" className="flex-shrink-0">Big</Badge>
-                    <span>Big Objects</span>
+                  <div className="flex justify-center">
+                    <Badge variant="bigObject" className="min-w-[130px] justify-center">Big Objects</Badge>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <Badge variant="tag" className="flex-shrink-0">Tag</Badge>
-                    <span>Tag Objects</span>
+                  <div className="flex justify-center">
+                    <Badge variant="tag" className="min-w-[130px] justify-center">Tag Objects</Badge>
                   </div>
                 </div>
               </div>
@@ -320,7 +308,7 @@ export default function SchemaFlow() {
           ) : (
             <button
               onClick={toggleLegend}
-              className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-md text-xs text-sf-text hover:bg-gray-50 flex items-center gap-1.5 transition-colors"
+              className="bg-white border border-gray-200 rounded-sm px-3 py-2 shadow-md text-xs text-sf-text hover:bg-gray-50 flex items-center gap-1.5 transition-colors"
               title="Show legend"
             >
               <ChevronUp className="h-3.5 w-3.5" />
@@ -331,7 +319,7 @@ export default function SchemaFlow() {
 
         {/* Stats */}
         <Panel position="top-left" className="mt-[120px]">
-          <div className="bg-white border border-gray-300 rounded-md px-3.5 py-2 text-xs text-sf-text-muted flex gap-2.5 shadow-sm font-medium">
+          <div className="bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-xs text-sf-text-muted flex gap-2.5 shadow-sm font-medium">
             <span>{selectedObjectNames.length} objects</span>
             <span>•</span>
             <span>{edges.length} relationships</span>

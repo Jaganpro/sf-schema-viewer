@@ -36,7 +36,7 @@ export function FilterChip({
       <button
         onClick={onClick}
         className={cn(
-          'px-2 py-1 text-xs rounded-md border transition-all flex items-center gap-1',
+          'px-2 py-1 text-xs rounded-sm border transition-all flex items-center gap-1',
           active
             ? 'bg-white border-gray-300 shadow-sm'
             : 'bg-gray-50 border-gray-200 opacity-50 hover:opacity-75',
@@ -57,7 +57,7 @@ export function FilterChip({
     <button
       onClick={onClick}
       className={cn(
-        'px-3 py-1.5 text-xs rounded-full border transition-all flex items-center gap-1.5 font-medium',
+        'px-3 py-1.5 text-xs rounded-sm border transition-all flex items-center gap-1.5 font-medium',
         active
           ? 'bg-sf-blue/10 border-sf-blue/30 text-sf-blue'
           : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700',
