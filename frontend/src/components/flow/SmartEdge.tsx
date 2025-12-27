@@ -56,11 +56,17 @@ function SmartEdge({
       return null;
     }
 
-    // Get node positions and dimensions
-    const sourceWidth = sourceNode.measured?.width ?? 260;
-    const sourceHeight = sourceNode.measured?.height ?? 200;
-    const targetWidth = targetNode.measured?.width ?? 260;
-    const targetHeight = targetNode.measured?.height ?? 200;
+    // Don't render until React Flow has measured the nodes
+    // This prevents edges from using wrong fallback dimensions and showing gaps
+    if (!sourceNode.measured?.width || !targetNode.measured?.width) {
+      return null;
+    }
+
+    // Get node positions and dimensions (now guaranteed to exist)
+    const sourceWidth = sourceNode.measured.width;
+    const sourceHeight = sourceNode.measured.height!;
+    const targetWidth = targetNode.measured.width;
+    const targetHeight = targetNode.measured.height!;
 
     // Calculate center points
     const sourceCenterX = sourceNode.position.x + sourceWidth / 2;
