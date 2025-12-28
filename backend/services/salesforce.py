@@ -206,6 +206,12 @@ class SalesforceService:
                     field=rel["field"],
                     relationship_name=rel.get("relationshipName"),
                     cascade_delete=rel.get("cascadeDelete", False),
+                    # Relationship behavior
+                    restricted_delete=rel.get("restrictedDelete", False),
+                    deprecated_and_hidden=rel.get("deprecatedAndHidden", False),
+                    # Junction object support (many-to-many)
+                    junction_id_list_names=rel.get("junctionIdListNames") or None,
+                    junction_reference_to=rel.get("junctionReferenceTo") or None,
                 )
             )
 

@@ -62,6 +62,14 @@ export interface RelationshipInfo {
   field: string;
   relationship_name?: string;
   cascade_delete: boolean; // true = master-detail
+
+  // Relationship behavior
+  restricted_delete?: boolean; // Parent deletion restricted if children exist
+  deprecated_and_hidden?: boolean; // Is relationship deprecated
+
+  // Junction object support (many-to-many relationships)
+  junction_id_list_names?: string[];
+  junction_reference_to?: string[];
 }
 
 export interface ObjectBasicInfo {

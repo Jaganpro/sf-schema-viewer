@@ -23,6 +23,7 @@ import { cn, getFieldTypeIcon } from '@/lib/utils';
 import { isFilteredByType } from '@/lib/objectTypeFilters';
 import { useAppStore } from '../../store';
 import { FieldDetailModal } from './FieldDetailModal';
+import { RelationshipDetailModal } from './RelationshipDetailModal';
 import type { FieldInfo, RelationshipInfo } from '../../types/schema';
 
 /** System fields that exist on most Salesforce objects (audit/identity fields) */
@@ -115,6 +116,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   const [fieldSearch, setFieldSearch] = useState('');
   const [relSearch, setRelSearch] = useState('');
   const [selectedField, setSelectedField] = useState<FieldInfo | null>(null);
+  const [selectedRelationship, setSelectedRelationship] = useState<RelationshipInfo | null>(null);
 
   // Get selected child relationships for this object from store
   const selectedRels = selectedChildRelsByParent.get(objectName) ?? new Set<string>();
@@ -590,19 +592,22 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                   filteredRelationships.map((rel) => {
                     const relKey = getRelKey(rel);
                     return (
-                      <label
+                      <div
                         key={relKey}
-                        className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer block"
+                        className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer"
+                        onClick={() => setSelectedRelationship(rel)}
                       >
                         <div
                           className="grid items-center gap-2"
                           style={{ gridTemplateColumns: 'auto 1fr auto' }}
                         >
-                          {/* Column 1: Checkbox */}
-                          <Checkbox
-                            checked={selectedRels.has(relKey)}
-                            onCheckedChange={() => toggleRelSelection(rel)}
-                          />
+                          {/* Column 1: Checkbox - stop propagation to prevent modal open */}
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedRels.has(relKey)}
+                              onCheckedChange={() => toggleRelSelection(rel)}
+                            />
+                          </div>
                           {/* Column 2: Relationship info (truncates) */}
                           <div className="min-w-0">
                             <div className="truncate">
@@ -614,11 +619,6 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                                 {rel.field}
                               </span>
                             </div>
-                            {rel.relationship_name && (
-                              <div className="text-xs text-sf-text-muted truncate mt-0.5">
-                                via {rel.relationship_name}
-                              </div>
-                            )}
                           </div>
                           {/* Column 3: Badge (always visible) */}
                           <Badge
@@ -628,7 +628,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                             {rel.cascade_delete ? 'MD' : 'Lookup'}
                           </Badge>
                         </div>
-                      </label>
+                      </div>
                     );
                   })
                 )}
@@ -920,6 +920,12 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       <FieldDetailModal
         field={selectedField}
         onClose={() => setSelectedField(null)}
+      />
+
+      {/* Relationship Detail Modal */}
+      <RelationshipDetailModal
+        relationship={selectedRelationship}
+        onClose={() => setSelectedRelationship(null)}
       />
     </div>
   );

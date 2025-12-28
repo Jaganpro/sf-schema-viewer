@@ -67,6 +67,14 @@ class RelationshipInfo(BaseModel):
     relationship_name: str | None = None
     cascade_delete: bool = False  # True = master-detail
 
+    # Relationship behavior
+    restricted_delete: bool = False  # Parent deletion restricted if children exist
+    deprecated_and_hidden: bool = False  # Is relationship deprecated
+
+    # Junction object support (many-to-many relationships)
+    junction_id_list_names: list[str] | None = None
+    junction_reference_to: list[str] | None = None
+
 
 class ObjectBasicInfo(BaseModel):
     """Basic information about an sObject (from global describe)."""
