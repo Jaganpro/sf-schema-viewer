@@ -1,13 +1,38 @@
 /**
  * Individual Cloud Pack card component.
- * Shows pack info and allows adding all pack objects to the ERD.
+ * Compact design with details shown in tooltip on hover.
  */
 
 import { useState } from 'react';
 import { Plus, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { CloudPack } from '../../data/cloudPacks';
+
+// Color classes for different cloud types
+const COLOR_CLASSES = {
+  sales: {
+    bg: 'bg-blue-100/70',
+    border: 'border-l-sf-blue border-blue-200',
+    hoverBg: 'hover:bg-blue-100',
+    hoverBorder: 'hover:border-blue-300 hover:border-l-sf-blue',
+    tooltip: 'bg-blue-50 border border-blue-200 text-gray-900',
+    tooltipMuted: 'text-blue-700',
+  },
+  service: {
+    bg: 'bg-purple-100/70',
+    border: 'border-l-purple-600 border-purple-200',
+    hoverBg: 'hover:bg-purple-100',
+    hoverBorder: 'hover:border-purple-300 hover:border-l-purple-600',
+    tooltip: 'bg-purple-50 border border-purple-200 text-gray-900',
+    tooltipMuted: 'text-purple-700',
+  },
+} as const;
 
 interface CloudPackCardProps {
   pack: CloudPack;
@@ -16,11 +41,10 @@ interface CloudPackCardProps {
 }
 
 export function CloudPackCard({ pack, availableCount, onAdd }: CloudPackCardProps) {
+  const colorClass = COLOR_CLASSES[pack.color];
   const [isAdding, setIsAdding] = useState(false);
   const [lastResult, setLastResult] = useState<{ added: number } | null>(null);
 
-  const previewObjects = pack.objects.slice(0, 4).join(', ');
-  const hasMore = pack.objects.length > 4;
   const isDisabled = availableCount === 0;
 
   const handleAdd = async () => {
@@ -37,60 +61,62 @@ export function CloudPackCard({ pack, availableCount, onAdd }: CloudPackCardProp
   };
 
   return (
-    <div
-      className={cn(
-        'border rounded-lg p-4 transition-all border-l-[3px]',
-        isDisabled
-          ? 'border-gray-100 border-l-gray-300 bg-gray-50/50 opacity-60'
-          : 'border-gray-200 border-l-sf-blue hover:border-sf-blue/50 hover:border-l-sf-blue hover:shadow-sm'
-      )}
-    >
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h4 className="font-medium text-sm text-sf-text truncate">{pack.name}</h4>
-          <p className="text-xs text-gray-500">
-            {availableCount} of {pack.objects.length} available
-          </p>
-        </div>
-
-        {/* Add button with states */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleAdd}
-          disabled={isDisabled || isAdding}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
           className={cn(
-            'flex-shrink-0 min-w-[70px]',
-            lastResult?.added
-              ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-50'
-              : ''
+            'border rounded-lg p-3 transition-all border-l-[3px]',
+            isDisabled
+              ? 'border-gray-100 border-l-gray-300 bg-gray-50/50 opacity-60'
+              : `${colorClass.bg} ${colorClass.border} ${colorClass.hoverBg} ${colorClass.hoverBorder} hover:shadow-sm`
           )}
         >
-          {isAdding ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : lastResult?.added ? (
-            <>
-              <Check className="h-3.5 w-3.5 mr-1" />
-              +{lastResult.added}
-            </>
-          ) : (
-            <>
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              Add
-            </>
-          )}
-        </Button>
-      </div>
+          {/* Compact layout: Name + count on left, button on right */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h4 className="font-medium text-sm text-sf-text truncate">{pack.name}</h4>
+              <p className="text-xs text-gray-500">
+                {availableCount} of {pack.objects.length} available
+              </p>
+            </div>
 
-      {/* Description */}
-      <p className="text-xs text-gray-500 mt-2">{pack.description}</p>
-
-      {/* Object preview */}
-      <p className="text-xs text-gray-400 mt-1.5 line-clamp-1">
-        {previewObjects}
-        {hasMore && '...'}
-      </p>
-    </div>
+            {/* Add button with states */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAdd}
+              disabled={isDisabled || isAdding}
+              className={cn(
+                'flex-shrink-0 min-w-[70px] cursor-pointer',
+                lastResult?.added
+                  ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-50'
+                  : ''
+              )}
+            >
+              {isAdding ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : lastResult?.added ? (
+                <>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  +{lastResult.added}
+                </>
+              ) : (
+                <>
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="right" className={cn('max-w-xs p-3', colorClass.tooltip)}>
+        <p className="font-medium text-sm mb-2">{pack.description}</p>
+        <p className={cn('text-xs', colorClass.tooltipMuted)}>
+          <span className="font-medium">Objects:</span>{' '}
+          {pack.objects.join(', ')}
+        </p>
+      </TooltipContent>
+    </Tooltip>
   );
 }

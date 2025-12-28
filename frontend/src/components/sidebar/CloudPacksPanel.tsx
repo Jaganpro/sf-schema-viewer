@@ -5,6 +5,7 @@
 
 import { useMemo } from 'react';
 import { Info } from 'lucide-react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAppStore } from '../../store';
 import { CLOUD_PACKS } from '../../data/cloudPacks';
 import { CloudPackCard } from './CloudPackCard';
@@ -39,30 +40,32 @@ export function CloudPacksPanel() {
   }
 
   return (
-    <div className="p-4 space-y-3">
-      {/* Section title */}
-      <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
-        Quick Select
-      </div>
+    <TooltipProvider delayDuration={300}>
+      <div className="p-4 space-y-3">
+        {/* Section title */}
+        <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
+          Quick Select
+        </div>
 
-      {/* Info notice - at top so users see it before scrolling */}
-      <div className="flex items-start gap-2 text-xs text-blue-700 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-        <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-blue-500" />
-        <p>
-          Objects not available in your org are automatically skipped.
-          After adding, switch to <strong className="text-blue-800">All Objects</strong> to refine your selection.
-        </p>
-      </div>
+        {/* Info notice - at top so users see it before scrolling */}
+        <div className="flex items-start gap-2 text-xs text-blue-700 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+          <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-blue-500" />
+          <p>
+            Objects not available in your org are automatically skipped.
+            After adding, switch to <strong className="text-blue-800">All Objects</strong> to refine your selection.
+          </p>
+        </div>
 
-      {/* Pack cards */}
-      {packAvailability.map(({ pack, availableCount }) => (
-        <CloudPackCard
-          key={pack.id}
-          pack={pack}
-          availableCount={availableCount}
-          onAdd={() => addCloudPack(pack.id)}
-        />
-      ))}
-    </div>
+        {/* Pack cards */}
+        {packAvailability.map(({ pack, availableCount }) => (
+          <CloudPackCard
+            key={pack.id}
+            pack={pack}
+            availableCount={availableCount}
+            onAdd={() => addCloudPack(pack.id)}
+          />
+        ))}
+      </div>
+    </TooltipProvider>
   );
 }
