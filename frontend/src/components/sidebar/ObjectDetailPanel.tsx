@@ -24,6 +24,38 @@ import { isFilteredByType } from '@/lib/objectTypeFilters';
 import { useAppStore } from '../../store';
 import type { FieldInfo, RelationshipInfo } from '../../types/schema';
 
+/** System fields that exist on most Salesforce objects (audit/identity fields) */
+const SYSTEM_FIELDS = new Set([
+  'Id',
+  'CreatedDate',
+  'CreatedById',
+  'LastModifiedDate',
+  'LastModifiedById',
+  'SystemModstamp',
+  'IsDeleted',
+  'OwnerId',
+  'MasterRecordId',
+]);
+
+/** Get field classification: 'system', 'standard', or 'custom' */
+function getFieldClassification(field: FieldInfo): 'system' | 'standard' | 'custom' {
+  if (field.custom) return 'custom';
+  if (SYSTEM_FIELDS.has(field.name)) return 'system';
+  return 'standard';
+}
+
+/** Get badge styling for field classification */
+function getClassificationBadge(classification: 'system' | 'standard' | 'custom') {
+  switch (classification) {
+    case 'custom':
+      return { label: 'Custom', bg: 'bg-purple-100', text: 'text-purple-700' };
+    case 'system':
+      return { label: 'System', bg: 'bg-orange-100', text: 'text-orange-700' };
+    case 'standard':
+      return { label: 'Standard', bg: 'bg-blue-100', text: 'text-blue-700' };
+  }
+}
+
 interface ObjectDetailPanelProps {
   objectName: string;
   onClose: () => void;
@@ -456,6 +488,19 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                         </div>
                         {/* Column 4: Field badges (always visible) */}
                         <div className="flex gap-1">
+                          {/* Classification badge - always shown */}
+                          {(() => {
+                            const classification = getFieldClassification(field);
+                            const badge = getClassificationBadge(classification);
+                            return (
+                              <span className={cn(
+                                "text-[10px] px-1 py-0.5 rounded font-medium",
+                                badge.bg, badge.text
+                              )}>
+                                {badge.label}
+                              </span>
+                            );
+                          })()}
                           {!field.nillable && (
                             <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-600">
                               Req
