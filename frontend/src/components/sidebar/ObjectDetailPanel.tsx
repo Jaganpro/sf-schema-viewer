@@ -458,29 +458,33 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                       key={field.name}
                       className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer block"
                     >
-                      <div className="flex items-center gap-2">
-                        {/* Checkbox for field selection */}
+                      <div
+                        className="grid items-center gap-2"
+                        style={{ gridTemplateColumns: 'auto auto 1fr auto' }}
+                      >
+                        {/* Column 1: Checkbox */}
                         <Checkbox
                           checked={selectedFields.has(field.name)}
                           onCheckedChange={() => toggleFieldSelection(objectName, field.name)}
-                          className="shrink-0"
                         />
+                        {/* Column 2: Type icon */}
                         <span className="text-gray-400">{getFieldTypeIcon(field.type)}</span>
-                        <div className="flex-1 min-w-0">
+                        {/* Column 3: Label + metadata (truncates) */}
+                        <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm text-sf-text truncate">{field.label}</span>
                             {field.reference_to && field.reference_to.length > 0 && (
                               <ArrowRight className="h-3 w-3 text-sf-blue shrink-0" />
                             )}
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-sf-text-muted">
+                          <div className="text-xs text-sf-text-muted truncate">
                             <span className="font-mono">{field.name}</span>
-                            <span>•</span>
+                            <span> • </span>
                             <span>{formatFieldType(field)}</span>
                           </div>
                         </div>
-                        {/* Field badges */}
-                        <div className="flex gap-1 shrink-0">
+                        {/* Column 4: Field badges (always visible) */}
+                        <div className="flex gap-1">
                           {!field.nillable && (
                             <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-600">
                               Req
@@ -569,31 +573,36 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                         key={relKey}
                         className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer block"
                       >
-                        <div className="flex items-center gap-2">
+                        <div
+                          className="grid items-center gap-2"
+                          style={{ gridTemplateColumns: 'auto 1fr auto' }}
+                        >
+                          {/* Column 1: Checkbox */}
                           <Checkbox
                             checked={selectedRels.has(relKey)}
                             onCheckedChange={() => toggleRelSelection(rel)}
-                            className="shrink-0"
                           />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1">
-                              <span className="text-sm text-sf-text font-mono truncate">
+                          {/* Column 2: Relationship info (truncates) */}
+                          <div className="min-w-0">
+                            <div className="truncate">
+                              <span className="text-sm text-sf-text font-mono">
                                 {rel.child_object}
                               </span>
                               <span className="text-sf-text-muted">.</span>
-                              <span className="text-sm text-sf-text-muted font-mono truncate">
+                              <span className="text-sm text-sf-text-muted font-mono">
                                 {rel.field}
                               </span>
                             </div>
                             {rel.relationship_name && (
-                              <div className="text-xs text-sf-text-muted mt-0.5">
+                              <div className="text-xs text-sf-text-muted truncate mt-0.5">
                                 via {rel.relationship_name}
                               </div>
                             )}
                           </div>
+                          {/* Column 3: Badge (always visible) */}
                           <Badge
                             variant={rel.cascade_delete ? 'destructive' : 'outline'}
-                            className="shrink-0 text-[10px]"
+                            className="text-[10px]"
                           >
                             {rel.cascade_delete ? 'MD' : 'Lookup'}
                           </Badge>

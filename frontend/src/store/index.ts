@@ -164,7 +164,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   edges: [],
   sidebarOpen: true,
   sidebarWidth: 400,
-  detailPanelWidth: 350,
+  detailPanelWidth: 400,
   classificationFilters: { ...DEFAULT_CLASSIFICATION_FILTERS },
   selectedNamespaces: [],
   searchTerm: '',
@@ -416,8 +416,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setDetailPanelWidth: (width: number) => {
-    // Clamp width between min and max bounds
-    const clampedWidth = Math.min(Math.max(width, 280), 500);
+    // Clamp width between min and max bounds (same as sidebar)
+    const clampedWidth = Math.min(Math.max(width, 200), 600);
     set({ detailPanelWidth: clampedWidth });
   },
 
