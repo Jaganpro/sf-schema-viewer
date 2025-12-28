@@ -87,13 +87,13 @@ function ObjectItem({ object, isSelected, isFocused, isNew, onToggle, onFocus }:
           <span className="truncate">{object.label}</span>
         </div>
         <div className="text-xs text-sf-text-muted truncate">
-          <span className="font-mono">{object.name}</span>
           {object.key_prefix && (
             <>
-              <span> • </span>
               <span>{object.key_prefix}</span>
+              <span> • </span>
             </>
           )}
+          <span className="font-mono">{object.name}</span>
         </div>
       </div>
 
@@ -181,6 +181,8 @@ export default function ObjectPicker() {
     releaseStats,
     showOnlyNew,
     setShowOnlyNew,
+    // Timing
+    objectsLoadTime,
   } = useAppStore();
 
   const [localSearch, setLocalSearch] = useState(searchTerm);
@@ -502,9 +504,9 @@ export default function ObjectPicker() {
               </div>
             </div>
 
-            {/* Show only new objects checkbox */}
+            {/* Show only new objects checkbox - aligned with filter chips */}
             {newObjectNames.size > 0 && (
-              <div className="flex flex-col gap-1 mt-2">
+              <div className="flex flex-col gap-1 mt-2 ml-[52px]">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="show-only-new"
@@ -517,7 +519,7 @@ export default function ObjectPicker() {
                     className="text-xs text-sf-text-muted cursor-pointer flex items-center gap-1"
                   >
                     <Sparkles className="h-3 w-3 text-amber-500" />
-                    Show only new in {selectedReleaseLabel}
+                    Only new in {selectedReleaseLabel}
                   </label>
                 </div>
                 {/* Show hidden count when filter is active and some objects are hidden */}
@@ -608,6 +610,9 @@ export default function ObjectPicker() {
           {/* Object count indicator */}
           <div className="px-4 py-2 text-xs text-sf-text-muted border-b border-gray-100">
             Showing {filteredObjects.length} of {availableObjects.length} objects
+            {objectsLoadTime !== null && (
+              <span className="text-gray-400"> • {objectsLoadTime.toFixed(2)}s</span>
+            )}
           </div>
 
           {/* Actions */}

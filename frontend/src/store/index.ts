@@ -94,6 +94,7 @@ interface AppState {
   describedObjects: Map<string, ObjectDescribe>;
   isLoadingObjects: boolean;
   isLoadingDescribe: boolean;
+  objectsLoadTime: number | null;  // Time in seconds for last loadObjects call
 
   // Flow state
   nodes: Node[];
@@ -184,6 +185,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   describedObjects: new Map(),
   isLoadingObjects: false,
   isLoadingDescribe: false,
+  objectsLoadTime: null,
   nodes: [],
   edges: [],
   sidebarOpen: true,
@@ -291,15 +293,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   loadObjects: async () => {
     const { apiVersion } = get();
-    set({ isLoadingObjects: true, error: null });
+    set({ isLoadingObjects: true, error: null, objectsLoadTime: null });
+    const startTime = performance.now();
     try {
       const objects = await api.schema.listObjects(apiVersion ?? undefined);
-      set({ availableObjects: objects, isLoadingObjects: false });
+      const loadTime = (performance.now() - startTime) / 1000;  // Convert to seconds
+      set({ availableObjects: objects, isLoadingObjects: false, objectsLoadTime: loadTime });
       // Trigger background comparison to find new objects
       get().loadNewObjectsComparison();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load objects';
-      set({ isLoadingObjects: false, error: message });
+      set({ isLoadingObjects: false, error: message, objectsLoadTime: null });
     }
   },
 
