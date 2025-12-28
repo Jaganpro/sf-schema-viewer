@@ -392,7 +392,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
               Fields ({objectDescribe.fields.length})
             </TabsTrigger>
             <TabsTrigger value="relationships" className="text-xs">
-              Child Rels ({filteredRelationships.length})
+              Child Relationships ({filteredRelationships.length})
             </TabsTrigger>
           </TabsList>
 
