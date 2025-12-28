@@ -3,13 +3,20 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, X, RefreshCw, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, X, RefreshCw, Zap, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FilterChip } from '@/components/ui/filter-chip';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Tooltip,
   TooltipContent,
@@ -19,12 +26,14 @@ import {
 import { cn } from '@/lib/utils';
 import { OBJECT_TYPE_FILTERS, getObjectTypeInfo } from '@/lib/objectTypeFilters';
 import { useAppStore } from '../../store';
+import { NewObjectsModal } from './NewObjectsModal';
 import type { ObjectBasicInfo } from '../../types/schema';
 
 interface ObjectItemProps {
   object: ObjectBasicInfo;
   isSelected: boolean;
   isFocused: boolean;
+  isNew: boolean;  // Object is new in current release
   onToggle: () => void;
   onFocus: () => void;
 }
@@ -36,7 +45,7 @@ interface ObjectItemProps {
  * - Short-form badges indicate object type (STD/CUST + type)
  * - Always-visible chevron indicates clickability
  */
-function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: ObjectItemProps) {
+function ObjectItem({ object, isSelected, isFocused, isNew, onToggle, onFocus }: ObjectItemProps) {
   const typeInfo = getObjectTypeInfo(object.name);
 
   return (
@@ -61,7 +70,21 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
 
       {/* Label + API name - middle column, truncates */}
       <div className="min-w-0">
-        <div className="text-sm text-sf-text truncate">{object.label}</div>
+        <div className="text-sm text-sf-text truncate flex items-center gap-1.5">
+          {isNew && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>New in this release</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <span className="truncate">{object.label}</span>
+        </div>
         <div className="text-xs text-sf-text-muted truncate">
           <span className="font-mono">{object.name}</span>
           {object.key_prefix && (
@@ -147,10 +170,26 @@ export default function ObjectPicker() {
     setFocusedObject,
     advancedFiltersExpanded,
     toggleAdvancedFilters,
+    // API Version
+    apiVersion,
+    availableApiVersions,
+    isLoadingApiVersions,
+    setApiVersion,
+    // New objects detection
+    newObjectNames,
+    isLoadingNewObjects,
+    releaseStats,
+    showOnlyNew,
+    setShowOnlyNew,
   } = useAppStore();
 
   const [localSearch, setLocalSearch] = useState(searchTerm);
   const [isResizing, setIsResizing] = useState(false);
+  const [selectedReleaseStat, setSelectedReleaseStat] = useState<typeof releaseStats[0] | null>(null);
+
+  // Get the selected version's release label for dynamic text
+  const selectedVersionInfo = availableApiVersions.find(v => `v${v.version}` === apiVersion);
+  const selectedReleaseLabel = selectedVersionInfo?.label || 'current release';
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
@@ -237,6 +276,11 @@ export default function ObjectPicker() {
       return true;
     });
 
+    // "Show only new" filter - only show objects new in current release
+    if (showOnlyNew && newObjectNames.size > 0) {
+      filtered = filtered.filter((obj) => newObjectNames.has(obj.name));
+    }
+
     // Search filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -256,13 +300,24 @@ export default function ObjectPicker() {
       if (!aSelected && bSelected) return 1;
       return a.label.localeCompare(b.label);
     });
-  }, [availableObjects, classificationFilters, selectedNamespaces, objectTypeFilters, searchTerm, selectedObjectNames]);
+  }, [availableObjects, classificationFilters, selectedNamespaces, objectTypeFilters, showOnlyNew, newObjectNames, searchTerm, selectedObjectNames]);
 
   // Calculate how many selected objects are hidden by current filters
   const selectedButHiddenCount = useMemo(() => {
     const visibleObjectNames = new Set(filteredObjects.map(obj => obj.name));
     return selectedObjectNames.filter(name => !visibleObjectNames.has(name)).length;
   }, [filteredObjects, selectedObjectNames]);
+
+  // Calculate how many new objects are visible vs hidden by filters
+  const newObjectsStats = useMemo(() => {
+    if (!showOnlyNew || newObjectNames.size === 0) return null;
+
+    const totalNew = newObjectNames.size;
+    const visibleNew = filteredObjects.filter(obj => newObjectNames.has(obj.name)).length;
+    const hiddenNew = totalNew - visibleNew;
+
+    return { totalNew, visibleNew, hiddenNew };
+  }, [showOnlyNew, newObjectNames, filteredObjects]);
 
   const handleToggleObject = useCallback((objectName: string) => {
     if (selectedObjectNames.includes(objectName)) {
@@ -334,6 +389,92 @@ export default function ObjectPicker() {
         </div>
       ) : (
         <>
+          {/* API Version Selector + Release Stats (2-column layout) */}
+          {availableApiVersions.length > 0 && apiVersion && (
+            <div className="px-4 py-3 border-b border-gray-200">
+              <div className="grid grid-cols-2 gap-3">
+                {/* Left column: Version picker + Show only new checkbox */}
+                <div className="flex flex-col gap-2">
+                  <Select
+                    value={apiVersion}
+                    onValueChange={setApiVersion}
+                    disabled={isLoadingApiVersions}
+                  >
+                    <SelectTrigger className="w-full h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {availableApiVersions.map((v) => (
+                        <SelectItem key={v.version} value={`v${v.version}`}>
+                          v{v.version} ({v.label})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Show only new objects - positioned near New Objects stats card */}
+                  {newObjectNames.size > 0 && (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="show-only-new"
+                          checked={showOnlyNew}
+                          onCheckedChange={(checked) => setShowOnlyNew(checked === true)}
+                          className="h-4 w-4"
+                        />
+                        <label
+                          htmlFor="show-only-new"
+                          className="text-xs text-sf-text-muted cursor-pointer flex items-center gap-1"
+                        >
+                          <Sparkles className="h-3 w-3 text-amber-500" />
+                          New in {selectedReleaseLabel}
+                        </label>
+                      </div>
+                      {/* Show hidden count when filter is active and some objects are hidden */}
+                      {showOnlyNew && newObjectsStats && newObjectsStats.hiddenNew > 0 && (
+                        <div className="text-[10px] text-amber-600 ml-6">
+                          {newObjectsStats.visibleNew} of {newObjectsStats.totalNew} shown
+                          <span className="text-gray-400"> ({newObjectsStats.hiddenNew} hidden by filters)</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right column: Release stats */}
+                <div className="bg-amber-50/50 rounded-md p-2 border border-amber-100">
+                  <div className="text-xs font-medium text-amber-700 flex items-center gap-1 mb-1">
+                    <Sparkles className="h-3 w-3" />
+                    New Objects by Release
+                  </div>
+                  {isLoadingNewObjects ? (
+                    <div className="text-xs text-sf-text-muted animate-pulse">
+                      Loading...
+                    </div>
+                  ) : releaseStats.length > 0 ? (
+                    <div className="space-y-0.5">
+                      {releaseStats.map((stat) => (
+                        <div
+                          key={stat.version}
+                          className="flex justify-between text-xs cursor-pointer hover:bg-amber-100/50 rounded px-1 -mx-1 py-0.5"
+                          onClick={() => setSelectedReleaseStat(stat)}
+                          title={`Click to see ${stat.newCount} new objects`}
+                        >
+                          <span className="text-gray-600">{stat.label}</span>
+                          <span className="font-medium text-amber-600">+{stat.newCount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-sf-text-muted">
+                      No data
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Search */}
           <div className="px-4 py-3 relative">
             <Input
@@ -355,9 +496,10 @@ export default function ObjectPicker() {
 
           {/* Classification Filter Chips */}
           <div className="px-4 py-3 border-b border-gray-100">
-            <div className="text-xs text-sf-text-muted mb-2 font-medium">Show:</div>
-            <div className="flex flex-wrap gap-1.5">
-              <FilterChip
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600 font-medium">Show:</span>
+              <div className="flex flex-wrap gap-1.5">
+                <FilterChip
                 label="Standard"
                 active={classificationFilters.standard}
                 onClick={() => toggleClassificationFilter('standard')}
@@ -375,6 +517,7 @@ export default function ObjectPicker() {
                 onClick={() => toggleClassificationFilter('packaged')}
                 badgeVariant="namespace"
               />
+              </div>
             </div>
 
             {/* Namespace sub-filter (when Packaged is active) */}
@@ -399,6 +542,7 @@ export default function ObjectPicker() {
                 </div>
               </div>
             )}
+
           </div>
 
           {/* Advanced Filters - Collapsible */}
@@ -509,6 +653,7 @@ export default function ObjectPicker() {
                       object={obj}
                       isSelected={selectedObjectNames.includes(obj.name)}
                       isFocused={focusedObjectName === obj.name}
+                      isNew={newObjectNames.has(obj.name)}
                       onToggle={() => handleToggleObject(obj.name)}
                       onFocus={() => setFocusedObject(obj.name)}
                     />
@@ -532,6 +677,17 @@ export default function ObjectPicker() {
           </div>
         </>
       )}
+
+      {/* New Objects Modal */}
+      <NewObjectsModal
+        releaseStat={selectedReleaseStat}
+        availableObjects={availableObjects}
+        onClose={() => setSelectedReleaseStat(null)}
+        onObjectClick={(name) => {
+          setSelectedReleaseStat(null);
+          setFocusedObject(name);
+        }}
+      />
     </div>
   );
 }

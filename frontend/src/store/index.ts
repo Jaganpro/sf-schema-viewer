@@ -54,12 +54,22 @@ interface ClassificationFilters {
   packaged: boolean;   // Managed package objects (with namespace_prefix)
 }
 
-/** Default classification - show Standard and Custom, hide Packaged */
+/** Default classification - show all object types */
 const DEFAULT_CLASSIFICATION_FILTERS: ClassificationFilters = {
   standard: true,
   custom: true,
-  packaged: false,
+  packaged: true,
 };
+
+/**
+ * Release stats for version comparison - shows new object counts per release
+ */
+interface ReleaseStat {
+  version: string;           // e.g., "65.0"
+  label: string;             // e.g., "Winter '26"
+  newCount: number;          // Number of new objects in this release
+  newObjectNames: string[];  // Actual object API names (for popup modal)
+}
 
 interface AppState {
   // Auth state
@@ -70,6 +80,12 @@ interface AppState {
   apiVersion: string | null;  // Selected version (e.g., "v62.0"), null = use default
   availableApiVersions: ApiVersionInfo[];
   isLoadingApiVersions: boolean;
+
+  // New objects detection state (version comparison)
+  newObjectNames: Set<string>;           // Objects new in current version vs previous
+  isLoadingNewObjects: boolean;          // Loading state for comparison
+  releaseStats: ReleaseStat[];           // New object counts for last 3 releases
+  showOnlyNew: boolean;                  // Filter toggle for showing only new objects
 
   // Schema state
   availableObjects: ObjectBasicInfo[];
@@ -111,6 +127,8 @@ interface AppState {
   loadApiVersions: () => Promise<void>;
   setApiVersion: (version: string | null) => void;
   loadObjects: () => Promise<void>;
+  loadNewObjectsComparison: () => Promise<void>;  // Fetches previous version & computes diff
+  setShowOnlyNew: (show: boolean) => void;        // Toggle "show only new" filter
   selectObjects: (names: string[]) => Promise<void>;
   addObject: (name: string) => Promise<void>;
   removeObject: (name: string) => void;
@@ -155,6 +173,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   apiVersion: null,
   availableApiVersions: [],
   isLoadingApiVersions: false,
+  newObjectNames: new Set(),
+  isLoadingNewObjects: false,
+  releaseStats: [],
+  showOnlyNew: false,
   availableObjects: [],
   selectedObjectNames: [],
   describedObjects: new Map(),
@@ -234,6 +256,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (version === apiVersion) return; // No change
 
     // Clear cached data since objects may differ between versions
+    // NOTE: releaseStats is NOT cleared - it's cached since top 3 releases are always the same
     set({
       apiVersion: version,
       availableObjects: [],
@@ -241,6 +264,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       describedObjects: new Map(),
       nodes: [],
       edges: [],
+      // Clear sparkle icons (they depend on selected version), but keep releaseStats cached
+      newObjectNames: new Set(),
+      isLoadingNewObjects: false,
     });
 
     // Reload objects with new version
@@ -253,10 +279,108 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const objects = await api.schema.listObjects(apiVersion ?? undefined);
       set({ availableObjects: objects, isLoadingObjects: false });
+      // Trigger background comparison to find new objects
+      get().loadNewObjectsComparison();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load objects';
       set({ isLoadingObjects: false, error: message });
     }
+  },
+
+  // Load objects from previous versions and compute diffs for last 3 releases
+  // IMPORTANT: Release stats always show top 3 versions (e.g., v65 vs v64, v64 vs v63, v63 vs v62)
+  // regardless of which version is selected. newObjectNames (for sparkle icons) is computed
+  // based on the selected version vs its predecessor.
+  // NOTE: releaseStats are CACHED - only fetched once, then reused across version changes.
+  loadNewObjectsComparison: async () => {
+    const { availableApiVersions, apiVersion, releaseStats } = get();
+
+    // Need at least 2 versions to compute any diff
+    if (availableApiVersions.length < 2) {
+      set({ newObjectNames: new Set(), isLoadingNewObjects: false, releaseStats: [] });
+      return;
+    }
+
+    // Only show loading state if we need to fetch release stats (not cached)
+    const needsFetch = releaseStats.length === 0;
+    if (needsFetch) {
+      set({ isLoadingNewObjects: true });
+    }
+
+    try {
+      // =====================================================
+      // Part 1: Release Stats - Only fetch if not cached
+      // =====================================================
+      let stats = releaseStats;
+      let objectLists: ObjectBasicInfo[][] = [];
+
+      if (needsFetch) {
+        // First time: fetch all 4 versions to compute 3 diffs
+        const versionsToFetch = availableApiVersions.slice(0, 4);
+        const fetchPromises = versionsToFetch.map(v =>
+          api.schema.listObjects(`v${v.version}`)
+        );
+        objectLists = await Promise.all(fetchPromises);
+
+        // Compute diffs for top 3 versions
+        stats = [];
+        for (let i = 0; i < Math.min(3, objectLists.length - 1); i++) {
+          const currentNames = new Set(objectLists[i].map(o => o.name));
+          const prevNames = new Set(objectLists[i + 1].map(o => o.name));
+          const newObjectNames = [...currentNames].filter(name => !prevNames.has(name)).sort();
+
+          stats.push({
+            version: versionsToFetch[i].version,
+            label: versionsToFetch[i].label,
+            newCount: newObjectNames.length,
+            newObjectNames,
+          });
+        }
+      }
+
+      // =====================================================
+      // Part 2: newObjectNames - Always recompute for selected version
+      // =====================================================
+      const selectedVersionNum = apiVersion?.replace('v', '') || availableApiVersions[0].version;
+      const selectedIndex = availableApiVersions.findIndex(v => v.version === selectedVersionNum);
+
+      let newNames = new Set<string>();
+      if (selectedIndex >= 0 && selectedIndex < availableApiVersions.length - 1) {
+        // If we have fresh objectLists from above, reuse them
+        // Otherwise fetch just the 2 versions needed for sparkle icons
+        let selectedObjects: ObjectBasicInfo[];
+        let prevObjects: ObjectBasicInfo[];
+
+        if (objectLists.length > 0 && selectedIndex < objectLists.length && (selectedIndex + 1) < objectLists.length) {
+          selectedObjects = objectLists[selectedIndex];
+          prevObjects = objectLists[selectedIndex + 1];
+        } else {
+          // Fetch only the 2 versions needed
+          const prevVersion = availableApiVersions[selectedIndex + 1];
+          [selectedObjects, prevObjects] = await Promise.all([
+            api.schema.listObjects(`v${selectedVersionNum}`),
+            api.schema.listObjects(`v${prevVersion.version}`),
+          ]);
+        }
+
+        const currentNames = new Set(selectedObjects.map(o => o.name));
+        const prevNames = new Set(prevObjects.map(o => o.name));
+        newNames = new Set([...currentNames].filter(name => !prevNames.has(name)));
+      }
+
+      set({
+        releaseStats: stats,
+        newObjectNames: newNames,
+        isLoadingNewObjects: false,
+      });
+    } catch {
+      // Fail silently - new object detection is a nice-to-have
+      set({ releaseStats: [], newObjectNames: new Set(), isLoadingNewObjects: false });
+    }
+  },
+
+  setShowOnlyNew: (show: boolean) => {
+    set({ showOnlyNew: show });
   },
 
   selectObjects: async (names: string[]) => {

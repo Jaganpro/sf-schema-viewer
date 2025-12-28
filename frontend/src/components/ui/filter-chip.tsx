@@ -59,7 +59,7 @@ export function FilterChip({
       <button
         onClick={onClick}
         className={cn(
-          'px-2.5 py-1 text-xs rounded-sm border transition-all flex items-center gap-1.5 font-semibold',
+          'px-2.5 py-1 text-xs rounded-sm border transition-all flex items-center gap-1.5 font-medium',
           active
             ? `${colors.bg} ${colors.border} ${colors.text}`
             : 'bg-gray-50 border-gray-200 text-gray-400 opacity-60 hover:opacity-80',

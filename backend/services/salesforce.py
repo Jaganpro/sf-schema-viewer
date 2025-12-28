@@ -426,4 +426,5 @@ class SalesforceService:
 
         # Sort by version number descending (newest first)
         versions.sort(key=lambda x: float(x.version), reverse=True)
-        return versions
+        # Return only last 3 years of releases (3 releases/year × 3 years = 9 versions)
+        return versions[:9]
