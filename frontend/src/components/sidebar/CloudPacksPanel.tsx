@@ -45,6 +45,15 @@ export function CloudPacksPanel() {
         Quick Select
       </div>
 
+      {/* Info notice - at top so users see it before scrolling */}
+      <div className="flex items-start gap-2 text-xs text-blue-700 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+        <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-blue-500" />
+        <p>
+          Objects not available in your org are automatically skipped.
+          After adding, switch to <strong className="text-blue-800">All Objects</strong> to refine your selection.
+        </p>
+      </div>
+
       {/* Pack cards */}
       {packAvailability.map(({ pack, availableCount }) => (
         <CloudPackCard
@@ -54,15 +63,6 @@ export function CloudPacksPanel() {
           onAdd={() => addCloudPack(pack.id)}
         />
       ))}
-
-      {/* Info footer */}
-      <div className="flex items-start gap-2 text-xs text-gray-500 p-3 bg-gray-50 rounded-lg mt-4">
-        <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-        <p>
-          Objects not available in your org are automatically skipped.
-          After adding, switch to <strong>All Objects</strong> to refine your selection.
-        </p>
-      </div>
     </div>
   );
 }

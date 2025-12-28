@@ -85,7 +85,7 @@ interface AppState {
   // New objects detection state (version comparison)
   newObjectNames: Set<string>;           // Objects new in current version vs previous
   isLoadingNewObjects: boolean;          // Loading state for comparison
-  releaseStats: ReleaseStat[];           // New object counts for last 3 releases
+  releaseStats: ReleaseStat[];           // New object counts for last 9 releases (~3 years)
   showOnlyNew: boolean;                  // Filter toggle for showing only new objects
 
   // Schema state
@@ -272,7 +272,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (version === apiVersion) return; // No change
 
     // Clear cached data since objects may differ between versions
-    // NOTE: releaseStats is NOT cleared - it's cached since top 3 releases are always the same
+    // NOTE: releaseStats is NOT cleared - it's cached since release history is always the same
     set({
       apiVersion: version,
       availableObjects: [],
@@ -303,8 +303,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  // Load objects from previous versions and compute diffs for last 3 releases
-  // IMPORTANT: Release stats always show top 3 versions (e.g., v65 vs v64, v64 vs v63, v63 vs v62)
+  // Load objects from previous versions and compute diffs for last 9 releases (~3 years)
+  // IMPORTANT: Release stats always show top 9 versions (e.g., v65 vs v64, v64 vs v63, etc.)
   // regardless of which version is selected. newObjectNames (for sparkle icons) is computed
   // based on the selected version vs its predecessor.
   // NOTE: releaseStats are CACHED - only fetched once, then reused across version changes.
@@ -331,16 +331,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       let objectLists: ObjectBasicInfo[][] = [];
 
       if (needsFetch) {
-        // First time: fetch all 4 versions to compute 3 diffs
-        const versionsToFetch = availableApiVersions.slice(0, 4);
+        // First time: fetch all 10 versions to compute 9 diffs (~3 years of releases)
+        const versionsToFetch = availableApiVersions.slice(0, 10);
         const fetchPromises = versionsToFetch.map(v =>
           api.schema.listObjects(`v${v.version}`)
         );
         objectLists = await Promise.all(fetchPromises);
 
-        // Compute diffs for top 3 versions
+        // Compute diffs for top 9 versions
         stats = [];
-        for (let i = 0; i < Math.min(3, objectLists.length - 1); i++) {
+        for (let i = 0; i < Math.min(9, objectLists.length - 1); i++) {
           const currentNames = new Set(objectLists[i].map(o => o.name));
           const prevNames = new Set(objectLists[i + 1].map(o => o.name));
           const newObjectNames = [...currentNames].filter(name => !prevNames.has(name)).sort();

@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { X, Sparkles, ChevronRight, ChevronLeft } from 'lucide-react';
+import { X, Sparkles, ChevronRight, ChevronLeft, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -139,10 +139,14 @@ export function NewObjectsModal({
         </div>
       </ScrollArea>
 
-      {/* Footer hint */}
-      <div className="border-t px-4 py-2 bg-gray-50">
+      {/* Footer with hint and disclaimer */}
+      <div className="border-t px-4 py-2.5 bg-gray-50 space-y-1.5">
         <p className="text-[11px] text-gray-500 text-center">
           Click a release to see its new objects
+        </p>
+        <p className="text-[10px] text-amber-600 text-center">
+          <AlertTriangle className="h-3 w-3 inline-block align-text-bottom mr-1" />
+          Computed by comparing API versions. Results depend on org permissions. See Salesforce docs for official release notes.
         </p>
       </div>
     </>
@@ -206,7 +210,7 @@ export function NewObjectsModal({
                       handleClose();
                     }}
                     className={cn(
-                      'px-4 py-2 flex items-center justify-between cursor-pointer transition-colors',
+                      'px-4 py-2 flex items-center gap-3 cursor-pointer transition-colors',
                       index % 2 === 0 ? 'bg-white' : 'bg-gray-50',
                       'hover:bg-amber-50'
                     )}
@@ -219,7 +223,7 @@ export function NewObjectsModal({
                         {obj.name}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {obj.custom ? (
                         <>
                           <Badge variant="custom">Custom</Badge>
@@ -239,10 +243,14 @@ export function NewObjectsModal({
           </div>
         </ScrollArea>
 
-        {/* Footer hint */}
-        <div className="border-t px-4 py-2 bg-gray-50">
+        {/* Footer with hint and disclaimer */}
+        <div className="border-t px-4 py-2.5 bg-gray-50 space-y-1.5">
           <p className="text-[11px] text-gray-500 text-center">
             Click an object to view it in the list
+          </p>
+          <p className="text-[10px] text-amber-600 text-center">
+            <AlertTriangle className="h-3 w-3 inline-block align-text-bottom mr-1" />
+            Results depend on org permissions.
           </p>
         </div>
       </>
@@ -258,7 +266,7 @@ export function NewObjectsModal({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-[500px] mx-4 max-h-[80vh] bg-white rounded-lg shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-[640px] mx-4 max-h-[80vh] bg-white rounded-lg shadow-2xl flex flex-col overflow-hidden">
         {selectedRelease ? renderDetailView() : renderSummaryView()}
       </div>
     </div>

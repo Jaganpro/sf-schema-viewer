@@ -344,11 +344,17 @@ export default function ObjectPicker() {
   if (!sidebarOpen) {
     return (
       <div
-        className="w-4 h-full bg-gray-50 border-r border-sf-border flex items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors"
+        className="w-7 h-full bg-gray-50 border-r border-sf-border flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors"
         onClick={toggleSidebar}
         title="Open sidebar"
       >
-        <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
+        <span
+          className="text-[10px] font-medium text-gray-500 tracking-wide"
+          style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+        >
+          Objects
+        </span>
+        <ChevronRight className="h-3 w-3 text-gray-400 mt-2" />
       </div>
     );
   }
@@ -398,12 +404,13 @@ export default function ObjectPicker() {
             </Select>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7 flex-shrink-0"
+              size="sm"
+              className="h-7 px-2 flex-shrink-0 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 cursor-pointer"
               onClick={() => setShowReleaseSummary(true)}
               title="New objects by release"
             >
-              <Sparkles className="h-4 w-4 text-amber-500" />
+              <Sparkles className="h-3.5 w-3.5 mr-1" />
+              What's New
             </Button>
           </>
         )}
