@@ -27,9 +27,15 @@ export default function Header() {
     await logout();
   };
 
-  // Get display values - prefer org_name, fallback to display_name for org
+  // Get display values for header
   const orgDisplayName = authStatus?.user?.org_name || authStatus?.user?.display_name || 'Salesforce Org';
-  const usernameDisplay = authStatus?.user?.username || authStatus?.user?.email || '';
+  const orgId = authStatus?.user?.org_id || '';
+  const instanceName = authStatus?.user?.instance_name || '';
+  const orgType = authStatus?.user?.org_type || 'Salesforce';
+  const apiVersionLabel = authStatus?.user?.api_version_label || '';
+
+  // Truncate org ID for display (e.g., "00Dg8..." from "00Dg8000000FqKrEAK")
+  const truncateOrgId = (id: string) => id ? id.slice(0, 5) + '...' : '';
 
   return (
     <>
@@ -44,15 +50,37 @@ export default function Header() {
             <span className="text-white/80 text-sm">Loading...</span>
           ) : authStatus?.is_authenticated ? (
             <div className="flex items-center gap-4">
-              {/* Clickable session info */}
+              {/* Clickable session info button with outlined style */}
               <button
                 onClick={() => setShowSessionInfo(true)}
-                className="text-right hover:bg-white/10 rounded px-2 py-1 transition-colors cursor-pointer"
+                className="text-right border border-white/30 rounded-lg px-3 py-1.5
+                           hover:bg-white/10 hover:border-white/50 transition-all cursor-pointer"
                 title="Click to view session details"
               >
-                <span className="block text-sm font-medium">{orgDisplayName}</span>
-                <span className="block text-xs opacity-90 truncate max-w-[200px]">
-                  {usernameDisplay}
+                {/* Line 1: Org Name (Org ID truncated) • Instance */}
+                <span className="block text-sm font-medium">
+                  {orgDisplayName}
+                  {orgId && (
+                    <span className="text-white/60 ml-1.5 text-xs">
+                      ({truncateOrgId(orgId)})
+                    </span>
+                  )}
+                  {instanceName && (
+                    <>
+                      <span className="text-white/40 mx-1.5">•</span>
+                      <span className="text-white/70 text-xs">{instanceName}</span>
+                    </>
+                  )}
+                </span>
+                {/* Line 2: Org Type • Release */}
+                <span className="block text-xs text-white/70">
+                  {orgType}
+                  {apiVersionLabel && (
+                    <>
+                      <span className="mx-1.5">•</span>
+                      {apiVersionLabel}
+                    </>
+                  )}
                 </span>
               </button>
               <Button variant="sfGhost" size="sm" onClick={handleLogout}>

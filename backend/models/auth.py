@@ -24,6 +24,9 @@ class UserInfo(BaseModel):
     email: str
     org_id: str
     org_name: str | None = None  # For header display
+    org_type: str | None = None  # Edition: Developer, Enterprise, etc.
+    instance_name: str | None = None  # Extracted from instance URL (e.g., "na123")
+    api_version_label: str | None = None  # Release name (e.g., "Winter '26")
 
 
 class AuthStatus(BaseModel):

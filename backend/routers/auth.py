@@ -1,7 +1,7 @@
 """OAuth authentication routes for Salesforce."""
 
 import secrets
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 from fastapi import APIRouter, Cookie, HTTPException, Response
@@ -20,6 +20,41 @@ from services.session import session_store
 from services.salesforce import SalesforceService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+
+# API version to release name mapping (Salesforce releases 3x per year)
+API_VERSION_LABELS = {
+    "65.0": "Winter '26",
+    "64.0": "Fall '25",
+    "63.0": "Summer '25",
+    "62.0": "Spring '25",
+    "61.0": "Winter '25",
+    "60.0": "Fall '24",
+    "59.0": "Summer '24",
+    "58.0": "Spring '24",
+    "57.0": "Winter '24",
+}
+
+
+def extract_instance_name(instance_url: str) -> str:
+    """Extract instance name from Salesforce instance URL.
+
+    Examples:
+        https://orgfarm-ef68b.my.salesforce.com → orgfarm-ef68b
+        https://na123.salesforce.com → na123
+    """
+    if not instance_url:
+        return ""
+    host = urlparse(instance_url).netloc
+    # Get the first part of the hostname (before first dot)
+    return host.split(".")[0] if host else ""
+
+
+def get_api_version_label(version: str) -> str:
+    """Map API version number to release name."""
+    # Strip leading 'v' if present
+    clean_version = version.lstrip("v")
+    return API_VERSION_LABELS.get(clean_version, f"v{clean_version}")
 
 
 @router.get("/login")
@@ -149,6 +184,9 @@ async def get_status(session_id: str | None = Cookie(default=None)):
             email=session.email,
             org_id=session.org_id,
             org_name=session.org_name,  # For header display
+            org_type=session.org_type,  # Edition (fetched on first session-info call)
+            instance_name=extract_instance_name(session.instance_url),
+            api_version_label=get_api_version_label(settings.SF_API_VERSION),
         ),
         instance_url=session.instance_url,
     )
@@ -264,6 +302,8 @@ async def get_session_info(
             org_type = org_record.get("OrganizationType")
             is_sandbox = org_record.get("IsSandbox", False)
             default_currency = org_record.get("DefaultCurrencyIsoCode")
+            # Cache org info in session for header display
+            session_store.update_org_info(session_id, org_name=org_name, org_type=org_type)
     except Exception:
         # If SOQL fails, use fallback values
         org_name = session.display_name  # Fallback to display name

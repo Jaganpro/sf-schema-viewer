@@ -32,6 +32,7 @@ class Session:
     user_type: str | None = None
     api_urls: dict | None = None
     org_name: str | None = None
+    org_type: str | None = None  # Cached after first session-info fetch
 
 
 class SessionStore:
@@ -118,6 +119,19 @@ class SessionStore:
             session.access_token = access_token
             if refresh_token:
                 session.refresh_token = refresh_token
+            return True
+        return False
+
+    def update_org_info(
+        self, session_id: str, org_name: str | None = None, org_type: str | None = None
+    ) -> bool:
+        """Update org info in session (cached after first session-info fetch)."""
+        session = self._sessions.get(session_id)
+        if session:
+            if org_name:
+                session.org_name = org_name
+            if org_type:
+                session.org_type = org_type
             return True
         return False
 

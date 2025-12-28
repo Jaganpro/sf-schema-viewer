@@ -220,6 +220,9 @@ export interface UserInfo {
   email: string;
   org_id: string;
   org_name?: string;  // For header display
+  org_type?: string;  // Edition: Developer, Enterprise, etc.
+  instance_name?: string;  // Extracted from instance URL (e.g., "na123")
+  api_version_label?: string;  // Release name (e.g., "Winter '26")
 }
 
 export interface AuthStatus {
