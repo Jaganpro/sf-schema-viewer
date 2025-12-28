@@ -204,6 +204,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const status = await api.auth.getStatus();
       set({ authStatus: status, isLoadingAuth: false });
+
+      // If authenticated, fetch session info to populate org details in backend cache
+      // This triggers SOQL query for org_name, org_type, instance_name, then we
+      // re-fetch status to get the cached values for header display
+      if (status.is_authenticated) {
+        try {
+          await api.auth.getSessionInfo();
+          // Re-fetch status to get cached org info (org_type, instance_name)
+          const updatedStatus = await api.auth.getStatus();
+          set({ authStatus: updatedStatus });
+        } catch {
+          // Non-blocking - org info is nice-to-have for header display
+        }
+      }
     } catch {
       set({ authStatus: { is_authenticated: false }, isLoadingAuth: false });
     }
