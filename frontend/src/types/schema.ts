@@ -60,14 +60,48 @@ export interface ObjectDescribe {
   label_plural: string;
   key_prefix?: string;
   custom: boolean;
+  namespace_prefix?: string;
   fields: FieldInfo[];
   child_relationships: RelationshipInfo[];
   record_type_infos?: Record<string, unknown>[];
-  // Additional metadata from Object Describe
+
+  // Core capabilities (CRUD + access)
+  queryable?: boolean;
+  createable?: boolean;
+  updateable?: boolean;
+  deletable?: boolean;
+  retrieveable?: boolean;
+  undeleteable?: boolean;
+  searchable?: boolean;
+  mergeable?: boolean;
+  replicateable?: boolean;
+
+  // Layout capabilities
+  layoutable?: boolean;
+  compact_layoutable?: boolean;
+  search_layoutable?: boolean;
+
+  // Feature flags
   reportable?: boolean;
   activateable?: boolean;  // Allow Activities
+  feed_enabled?: boolean;  // Chatter
+  triggerable?: boolean;
+  mru_enabled?: boolean;
+
+  // Object type flags
+  custom_setting?: boolean;
+  is_interface?: boolean;
+  is_subtype?: boolean;
+  deprecated_and_hidden?: boolean;
+
+  // Object metadata
   description?: string;
   deployment_status?: string;
+
+  // Quick links (Salesforce URLs)
+  url_detail?: string;
+  url_edit?: string;
+  url_new?: string;
 }
 
 export interface UserInfo {

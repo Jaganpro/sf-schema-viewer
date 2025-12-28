@@ -68,14 +68,48 @@ class ObjectDescribe(BaseModel):
     label_plural: str
     key_prefix: str | None = None
     custom: bool
+    namespace_prefix: str | None = None
     fields: list[FieldInfo]
     child_relationships: list[RelationshipInfo]
     record_type_infos: list[dict] | None = None
-    # Additional metadata from Object Describe
+
+    # Core capabilities (CRUD + access)
+    queryable: bool = False
+    createable: bool = False
+    updateable: bool = False
+    deletable: bool = False
+    retrieveable: bool = False
+    undeleteable: bool = False
+    searchable: bool = False
+    mergeable: bool = False
+    replicateable: bool = False
+
+    # Layout capabilities
+    layoutable: bool = False
+    compact_layoutable: bool = False
+    search_layoutable: bool = False
+
+    # Feature flags
     reportable: bool = False
     activateable: bool = False  # Allow Activities
+    feed_enabled: bool = False  # Chatter
+    triggerable: bool = False
+    mru_enabled: bool = False
+
+    # Object type flags
+    custom_setting: bool = False
+    is_interface: bool = False
+    is_subtype: bool = False
+    deprecated_and_hidden: bool = False
+
+    # Object metadata
     description: str | None = None
     deployment_status: str | None = None
+
+    # Quick links (Salesforce URLs)
+    url_detail: str | None = None
+    url_edit: str | None = None
+    url_new: str | None = None
 
 
 class BatchDescribeRequest(BaseModel):

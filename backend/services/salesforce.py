@@ -180,14 +180,42 @@ class SalesforceService:
             label_plural=describe["labelPlural"],
             key_prefix=describe.get("keyPrefix"),
             custom=describe["custom"],
+            namespace_prefix=describe.get("namespacePrefix"),
             fields=fields,
             child_relationships=child_relationships,
             record_type_infos=describe.get("recordTypeInfos"),
-            # Additional metadata from Object Describe
+            # Core capabilities (CRUD + access)
+            queryable=describe.get("queryable", False),
+            createable=describe.get("createable", False),
+            updateable=describe.get("updateable", False),
+            deletable=describe.get("deletable", False),
+            retrieveable=describe.get("retrieveable", False),
+            undeleteable=describe.get("undeleteable", False),
+            searchable=describe.get("searchable", False),
+            mergeable=describe.get("mergeable", False),
+            replicateable=describe.get("replicateable", False),
+            # Layout capabilities
+            layoutable=describe.get("layoutable", False),
+            compact_layoutable=describe.get("compactLayoutable", False),
+            search_layoutable=describe.get("searchLayoutable", False),
+            # Feature flags
             reportable=describe.get("reportable", False),
             activateable=describe.get("activateable", False),
+            feed_enabled=describe.get("feedEnabled", False),
+            triggerable=describe.get("triggerable", False),
+            mru_enabled=describe.get("mruEnabled", False),
+            # Object type flags
+            custom_setting=describe.get("customSetting", False),
+            is_interface=describe.get("isInterface", False),
+            is_subtype=describe.get("isSubtype", False),
+            deprecated_and_hidden=describe.get("deprecatedAndHidden", False),
+            # Object metadata
             description=describe.get("description"),
             deployment_status=describe.get("deploymentStatus"),
+            # Quick links
+            url_detail=describe.get("urlDetail"),
+            url_edit=describe.get("urlEdit"),
+            url_new=describe.get("urlNew"),
         )
 
     def describe_objects(

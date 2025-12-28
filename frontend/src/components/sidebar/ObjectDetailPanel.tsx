@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Loader2,
   Link,
+  ExternalLink,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -337,39 +338,6 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
         </div>
       </div>
 
-      {/* Capabilities Section */}
-      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-        <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
-          Capabilities
-        </div>
-        <div className="grid grid-cols-4 gap-2 text-xs">
-          <div className={cn('text-center py-1 px-2 rounded', objectInfo.queryable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400')}>
-            Query
-          </div>
-          <div className={cn('text-center py-1 px-2 rounded', objectInfo.createable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400')}>
-            Create
-          </div>
-          <div className={cn('text-center py-1 px-2 rounded', objectInfo.updateable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400')}>
-            Update
-          </div>
-          <div className={cn('text-center py-1 px-2 rounded', objectInfo.deletable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400')}>
-            Delete
-          </div>
-        </div>
-        {/* Additional capabilities */}
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {objectInfo.feed_enabled && (
-            <span className="text-xs text-sf-blue bg-blue-50 px-1.5 py-0.5 rounded">Feed</span>
-          )}
-          {objectInfo.mergeable && (
-            <span className="text-xs text-sf-blue bg-blue-50 px-1.5 py-0.5 rounded">Merge</span>
-          )}
-          {objectInfo.replicateable && (
-            <span className="text-xs text-sf-blue bg-blue-50 px-1.5 py-0.5 rounded">Replicate</span>
-          )}
-        </div>
-      </div>
-
       {/* Add to ERD button if not already selected */}
       {!isInERD && (
         <div className="px-4 py-3 border-b border-gray-100">
@@ -384,18 +352,18 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
         </div>
       )}
 
-      {/* Tabbed Content: Fields and Child Relationships */}
+      {/* Tabbed Content: Details, Fields, and Child Relationships */}
       {objectDescribe ? (
-        <Tabs defaultValue="fields" className="flex-1 flex flex-col min-h-0">
+        <Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
           <TabsList className="mx-4 mt-3 mb-0 grid w-[calc(100%-2rem)] grid-cols-3">
+            <TabsTrigger value="details" className="text-xs">
+              Details
+            </TabsTrigger>
             <TabsTrigger value="fields" className="text-xs">
               Fields ({objectDescribe.fields.length})
             </TabsTrigger>
             <TabsTrigger value="relationships" className="text-xs">
               Child Rels ({filteredRelationships.length})
-            </TabsTrigger>
-            <TabsTrigger value="details" className="text-xs">
-              Details
             </TabsTrigger>
           </TabsList>
 
@@ -622,7 +590,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
           <TabsContent value="details" className="flex-1 flex flex-col min-h-0 mt-0">
             <ScrollArea className="flex-1">
               <div className="px-4 py-3 space-y-4">
-                {/* Description Section - from Object Describe for accuracy */}
+                {/* 1. Description Section */}
                 {objectDescribe.description && (
                   <div>
                     <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-1">
@@ -632,23 +600,27 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                   </div>
                 )}
 
-                {/* Properties Grid */}
+                {/* 2. Identity Section */}
                 <div>
                   <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
-                    Properties
+                    Identity
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
                       <span className="text-sf-text-muted">API Name</span>
-                      <span className="font-mono text-sf-text">{objectInfo.name}</span>
+                      <span className="font-mono text-sf-text">{objectDescribe.name}</span>
                     </div>
                     <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
                       <span className="text-sf-text-muted">Key Prefix</span>
-                      <span className="font-mono text-sf-text">{objectInfo.key_prefix || '—'}</span>
+                      <span className="font-mono text-sf-text">{objectDescribe.key_prefix || '—'}</span>
                     </div>
                     <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
                       <span className="text-sf-text-muted">Plural Label</span>
-                      <span className="text-sf-text">{objectInfo.label_plural}</span>
+                      <span className="text-sf-text">{objectDescribe.label_plural}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
+                      <span className="text-sf-text-muted">Namespace</span>
+                      <span className="font-mono text-sf-text">{objectDescribe.namespace_prefix || '—'}</span>
                     </div>
                     <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
                       <span className="text-sf-text-muted">Deployment Status</span>
@@ -657,40 +629,210 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                   </div>
                 </div>
 
-                {/* Settings Grid - use objectDescribe for accurate data */}
+                {/* 3. Capabilities Section - Pill Grid */}
                 <div>
                   <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
-                    Settings
+                    Capabilities
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">Reportable</span>
-                      <span className={objectDescribe.reportable ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {objectDescribe.reportable ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">Allow Activities</span>
-                      <span className={objectDescribe.activateable ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {objectDescribe.activateable ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">Record Types</span>
-                      <span className={objectDescribe.record_type_infos && objectDescribe.record_type_infos.length > 1 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {objectDescribe.record_type_infos && objectDescribe.record_type_infos.length > 1
-                          ? `Yes (${objectDescribe.record_type_infos.length})`
-                          : 'No'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">Custom Object</span>
-                      <span className={objectInfo.custom ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {objectInfo.custom ? 'Yes' : 'No'}
-                      </span>
-                    </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.queryable ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.queryable && "✓ "}Query
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.createable ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.createable && "✓ "}Create
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.updateable ? "bg-cyan-100 text-cyan-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.updateable && "✓ "}Update
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.deletable ? "bg-rose-100 text-rose-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.deletable && "✓ "}Delete
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.retrieveable ? "bg-sky-100 text-sky-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.retrieveable && "✓ "}Retrieve
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.undeleteable ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.undeleteable && "✓ "}Undelete
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.searchable ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.searchable && "✓ "}Search
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.mergeable ? "bg-violet-100 text-violet-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.mergeable && "✓ "}Merge
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.replicateable ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.replicateable && "✓ "}Replicate
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.layoutable ? "bg-slate-200 text-slate-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.layoutable && "✓ "}Layout
+                    </span>
                   </div>
                 </div>
+
+                {/* 4. Features Section - Pill Grid */}
+                <div>
+                  <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                    Features
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.reportable ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.reportable && "✓ "}Reportable
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.activateable ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.activateable && "✓ "}Activities
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.feed_enabled ? "bg-lime-100 text-lime-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.feed_enabled && "✓ "}Chatter
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.triggerable ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.triggerable && "✓ "}Triggers
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.record_type_infos && objectDescribe.record_type_infos.length > 1
+                        ? "bg-fuchsia-100 text-fuchsia-700"
+                        : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.record_type_infos && objectDescribe.record_type_infos.length > 1 && "✓ "}
+                      Record Types{objectDescribe.record_type_infos && objectDescribe.record_type_infos.length > 1 && ` (${objectDescribe.record_type_infos.length})`}
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.mru_enabled ? "bg-pink-100 text-pink-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.mru_enabled && "✓ "}MRU
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.compact_layoutable ? "bg-stone-200 text-stone-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.compact_layoutable && "✓ "}Compact Layout
+                    </span>
+                  </div>
+                </div>
+
+                {/* 5. Object Type Section - Pill Grid */}
+                <div>
+                  <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                    Object Type
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.custom ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                    )}>
+                      {objectDescribe.custom ? "Custom" : "Standard"}
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.custom_setting ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.custom_setting && "✓ "}Custom Setting
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.is_interface ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.is_interface && "✓ "}Interface
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.is_subtype ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.is_subtype && "✓ "}Subtype
+                    </span>
+                    {objectDescribe.deprecated_and_hidden && (
+                      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-red-100 text-red-700">
+                        ⚠ Deprecated
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 6. Quick Links Section */}
+                {(objectDescribe.url_detail || objectDescribe.url_edit || objectDescribe.url_new) && (
+                  <div>
+                    <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                      Quick Links
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {objectDescribe.url_detail && (
+                        <a
+                          href={objectDescribe.url_detail}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-sf-blue hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          View Record
+                        </a>
+                      )}
+                      {objectDescribe.url_edit && (
+                        <a
+                          href={objectDescribe.url_edit}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-sf-blue hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Edit Record
+                        </a>
+                      )}
+                      {objectDescribe.url_new && (
+                        <a
+                          href={objectDescribe.url_new}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-sf-blue hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          New Record
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </TabsContent>
