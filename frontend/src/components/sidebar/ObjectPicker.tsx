@@ -59,18 +59,19 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
         className="shrink-0"
       />
 
-      {/* Label - middle column, truncates */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="text-sm text-sf-text truncate">
-            {object.label}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="font-medium">{object.label}</p>
-          <p className="text-xs text-gray-500">{object.name}</p>
-        </TooltipContent>
-      </Tooltip>
+      {/* Label + API name - middle column, truncates */}
+      <div className="min-w-0">
+        <div className="text-sm text-sf-text truncate">{object.label}</div>
+        <div className="text-xs text-sf-text-muted truncate">
+          <span className="font-mono">{object.name}</span>
+          {object.key_prefix && (
+            <>
+              <span> • </span>
+              <span>{object.key_prefix}</span>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Right side: icons, badges, chevron */}
       <div className="flex items-center gap-1.5">
@@ -88,16 +89,16 @@ function ObjectItem({ object, isSelected, isFocused, onToggle, onFocus }: Object
           </Tooltip>
         )}
 
-        {/* Classification badges (STD/CUST) */}
+        {/* Classification badges (Standard/Custom) */}
         {object.custom ? (
           <>
-            <Badge variant="custom">CUST</Badge>
+            <Badge variant="custom">Custom</Badge>
             {object.namespace_prefix && (
               <Badge variant="namespace">{object.namespace_prefix}</Badge>
             )}
           </>
         ) : (
-          <Badge variant="standard">STD</Badge>
+          <Badge variant="standard">Standard</Badge>
         )}
 
         {/* Type badge (FEED, SHARE, HIST, etc.) */}

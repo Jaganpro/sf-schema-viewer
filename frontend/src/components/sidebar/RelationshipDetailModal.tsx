@@ -101,25 +101,25 @@ export function RelationshipDetailModal({ relationship, onClose }: RelationshipD
           {/* Top badges */}
           <div className="flex flex-wrap gap-1.5 mt-2">
             <span className={cn(
-              'px-1.5 py-0.5 rounded text-[11px] font-bold',
+              'px-1.5 py-0.5 rounded text-[11px] uppercase',
               relationship.cascade_delete
                 ? 'bg-rose-100 text-rose-700'
-                : 'bg-blue-100 text-blue-700'
+                : 'bg-gray-100 text-gray-700'
             )}>
               {relationship.cascade_delete ? 'Master-Detail' : 'Lookup'}
             </span>
             {relationship.restricted_delete && (
-              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-700">
+              <span className="px-1.5 py-0.5 rounded text-[11px] uppercase bg-amber-100 text-amber-700">
                 Restricted Delete
               </span>
             )}
             {isJunction && (
-              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-violet-100 text-violet-700">
+              <span className="px-1.5 py-0.5 rounded text-[11px] uppercase bg-violet-100 text-violet-700">
                 Junction
               </span>
             )}
             {relationship.deprecated_and_hidden && (
-              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700">
+              <span className="px-1.5 py-0.5 rounded text-[11px] uppercase bg-red-100 text-red-700">
                 Deprecated
               </span>
             )}

@@ -46,17 +46,6 @@ function getFieldClassification(field: FieldInfo): 'system' | 'standard' | 'cust
   return 'standard';
 }
 
-/** Get badge styling for field classification */
-function getClassificationBadge(classification: 'system' | 'standard' | 'custom') {
-  switch (classification) {
-    case 'custom':
-      return { label: 'Custom', bg: 'bg-purple-100', text: 'text-purple-700' };
-    case 'system':
-      return { label: 'System', bg: 'bg-orange-100', text: 'text-orange-700' };
-    case 'standard':
-      return { label: 'Standard', bg: 'bg-blue-100', text: 'text-blue-700' };
-  }
-}
 
 interface ObjectDetailPanelProps {
   objectName: string;
@@ -498,28 +487,21 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                           {/* Classification badge - always shown */}
                           {(() => {
                             const classification = getFieldClassification(field);
-                            const badge = getClassificationBadge(classification);
-                            return (
-                              <span className={cn(
-                                "text-[10px] px-1 py-0.5 rounded font-medium",
-                                badge.bg, badge.text
-                              )}>
-                                {badge.label}
-                              </span>
-                            );
+                            const label = classification.charAt(0).toUpperCase() + classification.slice(1);
+                            return <Badge variant={classification}>{label}</Badge>;
                           })()}
                           {!field.nillable && (
-                            <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-600">
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-600 uppercase">
                               Req
                             </span>
                           )}
                           {field.unique && (
-                            <span className="text-[10px] px-1 py-0.5 rounded bg-purple-100 text-purple-600">
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-purple-100 text-purple-600 uppercase">
                               Unique
                             </span>
                           )}
                           {field.external_id && (
-                            <span className="text-[10px] px-1 py-0.5 rounded bg-blue-100 text-blue-600">
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-blue-100 text-blue-600 uppercase">
                               ExtId
                             </span>
                           )}
@@ -622,7 +604,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                           </div>
                           {/* Column 3: Badge (always visible) */}
                           <Badge
-                            variant={rel.cascade_delete ? 'destructive' : 'outline'}
+                            variant={rel.cascade_delete ? 'masterDetail' : 'lookup'}
                             className="text-[10px]"
                           >
                             {rel.cascade_delete ? 'MD' : 'Lookup'}

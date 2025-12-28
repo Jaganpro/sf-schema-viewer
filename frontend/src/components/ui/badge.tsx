@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-sm border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center rounded-sm border px-2.5 py-0.5 text-xs font-medium uppercase transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
   {
     variants: {
       variant: {
@@ -11,24 +11,28 @@ const badgeVariants = cva(
         secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
         destructive: 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
         outline: 'text-foreground',
-        // Salesforce-specific variants for object classification
-        custom: 'border-transparent bg-sf-purple-light text-sf-purple text-[11px] px-1.5 py-0.5 rounded font-bold',
-        standard: 'border-transparent bg-blue-100 text-blue-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
+        // Salesforce-specific variants for object/field classification
+        custom: 'border-transparent bg-sf-purple-light text-sf-purple text-[11px] px-1.5 py-0.5 rounded',
+        standard: 'border-transparent bg-blue-100 text-blue-700 text-[11px] px-1.5 py-0.5 rounded',
+        system: 'border-transparent bg-orange-100 text-orange-700 text-[11px] px-1.5 py-0.5 rounded',
         // Object type badges - each with unique colors
-        feed: 'border-transparent bg-orange-100 text-orange-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
-        share: 'border-transparent bg-green-100 text-green-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
-        history: 'border-transparent bg-slate-200 text-slate-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
-        changeEvent: 'border-transparent bg-rose-100 text-rose-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
-        platformEvent: 'border-transparent bg-cyan-100 text-cyan-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
-        externalObject: 'border-transparent bg-indigo-100 text-indigo-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
-        customMetadata: 'border-transparent bg-teal-100 text-teal-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
-        bigObject: 'border-transparent bg-amber-100 text-amber-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
-        tag: 'border-transparent bg-violet-100 text-violet-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
+        feed: 'border-transparent bg-orange-100 text-orange-700 text-[11px] px-1.5 py-0.5 rounded',
+        share: 'border-transparent bg-green-100 text-green-700 text-[11px] px-1.5 py-0.5 rounded',
+        history: 'border-transparent bg-slate-200 text-slate-700 text-[11px] px-1.5 py-0.5 rounded',
+        changeEvent: 'border-transparent bg-rose-100 text-rose-700 text-[11px] px-1.5 py-0.5 rounded',
+        platformEvent: 'border-transparent bg-cyan-100 text-cyan-700 text-[11px] px-1.5 py-0.5 rounded',
+        externalObject: 'border-transparent bg-indigo-100 text-indigo-700 text-[11px] px-1.5 py-0.5 rounded',
+        customMetadata: 'border-transparent bg-teal-100 text-teal-700 text-[11px] px-1.5 py-0.5 rounded',
+        bigObject: 'border-transparent bg-amber-100 text-amber-700 text-[11px] px-1.5 py-0.5 rounded',
+        tag: 'border-transparent bg-violet-100 text-violet-700 text-[11px] px-1.5 py-0.5 rounded',
         // Capability indicator badges (compact, icon-style)
-        capability: 'border-gray-300 bg-gray-50 text-gray-600 text-[11px] px-1.5 py-0 rounded font-medium',
-        capabilityActive: 'border-sf-blue/30 bg-sf-blue/10 text-sf-blue text-[11px] px-1.5 py-0 rounded font-medium',
+        capability: 'border-gray-300 bg-gray-50 text-gray-600 text-[11px] px-1.5 py-0 rounded',
+        capabilityActive: 'border-sf-blue/30 bg-sf-blue/10 text-sf-blue text-[11px] px-1.5 py-0 rounded',
         // Namespace badge for managed package objects (pink - distinct from standard/custom)
-        namespace: 'border-transparent bg-pink-100 text-pink-700 text-[11px] px-1.5 py-0.5 rounded font-bold',
+        namespace: 'border-transparent bg-pink-100 text-pink-700 text-[11px] px-1.5 py-0.5 rounded',
+        // Relationship type badges for Child Relationships tab
+        lookup: 'border-transparent bg-gray-100 text-gray-700 text-[11px] px-1.5 py-0.5 rounded',
+        masterDetail: 'border-transparent bg-rose-100 text-rose-700 text-[11px] px-1.5 py-0.5 rounded',
       },
     },
     defaultVariants: {

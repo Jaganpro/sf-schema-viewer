@@ -4,6 +4,7 @@
  */
 
 import { X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -80,13 +81,6 @@ export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
   const isPicklist = field.type === 'picklist' || field.type === 'multipicklist';
   const hasNumeric = field.precision !== undefined || field.scale !== undefined || field.digits !== undefined;
 
-  // Classification badge styling
-  const classificationStyles = {
-    system: 'bg-orange-100 text-orange-700',
-    standard: 'bg-blue-100 text-blue-700',
-    custom: 'bg-purple-100 text-purple-700',
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
@@ -120,24 +114,21 @@ export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
 
           {/* Top badges */}
           <div className="flex flex-wrap gap-1.5 mt-2">
-            <span className={cn(
-              'px-1.5 py-0.5 rounded text-[11px] font-bold',
-              classificationStyles[classification]
-            )}>
+            <Badge variant={classification}>
               {classification.charAt(0).toUpperCase() + classification.slice(1)}
-            </span>
+            </Badge>
             {!field.nillable && (
-              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700">
+              <span className="px-1.5 py-0.5 rounded text-[11px] uppercase bg-red-100 text-red-700">
                 Required
               </span>
             )}
             {field.name_field && (
-              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-violet-100 text-violet-700">
+              <span className="px-1.5 py-0.5 rounded text-[11px] uppercase bg-violet-100 text-violet-700">
                 Name Field
               </span>
             )}
             {field.id_lookup && (
-              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-700">
+              <span className="px-1.5 py-0.5 rounded text-[11px] uppercase bg-indigo-100 text-indigo-700">
                 ID Lookup
               </span>
             )}
