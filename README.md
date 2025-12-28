@@ -26,7 +26,14 @@
 - 🔑 **OAuth 2.0 Flow** — Secure web server flow with refresh token support
 - 🍪 **Session Management** — Encrypted cookie sessions with automatic token refresh
 - 🌐 **Multi-Org Support** — Connect to any Production, Sandbox, or Developer org
-- 📡 **API Version Selection** — Choose from available Salesforce API versions (v62.0 - v65.0+)
+
+### 📡 API Version Picker & Release Tracking
+- 🔄 **Version Selector** — Choose from last 9 API versions (3 years of releases)
+- ✨ **New Objects Detection** — Sparkle icons (✨) highlight objects new in selected release
+- 📊 **Release Stats Card** — See new object counts for last 3 Salesforce releases at a glance
+- 🔍 **New Objects Modal** — Click any release to see all new objects with details
+- 🎯 **"New in {Release}" Filter** — One-click filter to show only new objects
+- 💾 **Smart Caching** — Release stats cached for instant version switching
 
 ### 📊 Interactive ERD Canvas
 - 🖱️ **Drag & Drop** — Freely position nodes on the canvas with position memory
@@ -88,6 +95,55 @@ Each node on the canvas displays:
 - 📋 **Field List** — All fields with type icons (in expanded mode)
 - 🔗 **Relationship Fields** — Highlighted with reference indicators
 - ➕ **Expand/Collapse** — Toggle individual node field visibility
+
+### 🔎 Click-to-Inspect Detail Modals
+Click any field or relationship to open rich detail modals with comprehensive metadata:
+
+**Field Detail Modal** (~30 properties in 10 sections):
+| Section | Properties Shown |
+|---------|------------------|
+| 🏷️ Identity | API Name, Label, Type, SOAP Type, Length |
+| 🔍 Queryability | Filterable, Sortable, Groupable, Aggregatable |
+| 🔐 Permissions | Createable, Updateable, Nillable, Permissionable |
+| ⚡ Characteristics | Unique, External ID, Case Sensitive, Name Field |
+| 🎛️ Type Flags | Auto Number, Calculated, Defaulted On Create |
+| 🔢 Numeric | Precision, Scale, Digits (when applicable) |
+| 📊 Status | Custom, Deprecated |
+| 💡 Formula | Syntax-highlighted formula (when applicable) |
+| 🔗 Relationships | Reference To, Picklist Values |
+
+**Relationship Detail Modal** (Salesforce Workbench parity):
+- 🏷️ Identity — Relationship Name, Child Object, Field
+- 🔗 Type — Cascade Delete, Restricted Delete indicators
+- 📊 Status — Deprecated indicator
+- 🔀 Junction — Many-to-many relationship details (when applicable)
+
+### 📋 Enhanced Object Detail Panel
+Click any object to see a rich detail panel with 6 organized sections:
+
+| Section | What's Shown |
+|---------|--------------|
+| 📝 Description | Object description (if available) |
+| 🏷️ Identity | API Name, Key Prefix, Plural Label, Namespace, Deployment Status |
+| ⚡ Capabilities | CRUD operations with unique color-coded pills |
+| ✨ Features | Reportable, Activities, Chatter, Triggers, Record Types, MRU |
+| 📦 Object Type | Standard/Custom, Custom Setting, Interface, Subtype badges |
+| 🔗 Quick Links | View/Edit/New Record links to Salesforce |
+
+Plus **Advanced Metadata** (collapsible):
+- 🌐 Network Scope Field
+- ⚙️ Action Overrides with count
+- 📐 Named Layouts with count
+- 🔌 API URLs showing all REST endpoints
+
+### 🏷️ Field Classification Badges
+Fields in the Fields tab show classification badges:
+
+| Badge | Type | Example Fields |
+|:-----:|------|----------------|
+| 🟠 `System` | Audit/identity | Id, CreatedDate, CreatedById, LastModifiedDate |
+| 🔵 `Standard` | Salesforce-provided | Name, BillingCity, Phone |
+| 🟣 `Custom` | User-defined | Invoice_Number__c, Custom_Field__c |
 
 ---
 
@@ -249,7 +305,7 @@ sf-schema-viewer/
 │   ├── services/
 │   │   └── salesforce.py    # SF API client
 │   └── models/
-│       └── schema.py        # Pydantic models
+│       └── schema.py        # Pydantic models (100% API coverage)
 │
 ├── frontend/                # Vite + React + TypeScript
 │   └── src/
@@ -260,7 +316,12 @@ sf-schema-viewer/
 │       │   │   ├── ObjectNode.tsx
 │       │   │   └── SmartEdge.tsx
 │       │   ├── layout/      # Layout components
-│       │   └── sidebar/     # Object picker
+│       │   └── sidebar/     # Object picker & detail modals
+│       │       ├── ObjectPicker.tsx
+│       │       ├── ObjectDetailPanel.tsx
+│       │       ├── FieldDetailModal.tsx
+│       │       ├── RelationshipDetailModal.tsx
+│       │       └── NewObjectsModal.tsx
 │       ├── lib/             # Utilities (cn helper)
 │       ├── store/           # Zustand state
 │       ├── utils/           # Transformers, layout, icons
