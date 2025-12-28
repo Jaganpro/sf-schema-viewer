@@ -58,6 +58,58 @@ class FieldInfo(BaseModel):
     default_value: str | None = None
     deprecated_and_hidden: bool = False
 
+    # Field help & display
+    inline_help_text: str | None = None
+    display_format: str | None = None  # Auto-number format pattern
+
+    # Dependent picklist support
+    dependent_picklist: bool = False
+    controller_name: str | None = None  # Controlling field name
+
+    # Compound field grouping (Address, Name components)
+    compound_field_name: str | None = None
+
+    # Additional type context (e.g., "personname", "plaintextarea")
+    extra_type_info: str | None = None
+
+    # Lookup filter info
+    filtered_lookup_info: dict | None = None
+
+    # Encrypted field support
+    mask_type: str | None = None  # e.g., "ssn", "creditCard"
+    mask_char: str | None = None
+
+    # Rich text indicator
+    html_formatted: bool = False
+
+    # Additional fields for 100% coverage
+    encrypted: bool = False
+    high_scale_number: bool = False
+    write_requires_master_read: bool = False  # Master-detail permission
+    default_value_formula: str | None = None  # Formula for default value
+    reference_target_field: str | None = None  # External lookup target
+    display_location_in_decimal: bool = False  # Geolocation display format
+    mask: str | None = None  # Input mask pattern
+
+
+class SupportedScope(BaseModel):
+    """Information about a supported list view scope for an sObject."""
+
+    name: str
+    label: str
+
+
+class RecordTypeInfo(BaseModel):
+    """Information about a record type for an sObject."""
+
+    record_type_id: str
+    name: str
+    developer_name: str
+    active: bool
+    available: bool
+    default_record_type_mapping: bool
+    master: bool
+
 
 class RelationshipInfo(BaseModel):
     """Information about a child relationship."""
@@ -102,6 +154,15 @@ class ObjectBasicInfo(BaseModel):
     description: str | None = None
     deployment_status: str | None = None
 
+    # Additional flags for 100% coverage
+    custom_setting: bool = False
+    mru_enabled: bool = False
+    deprecated_and_hidden: bool = False
+    retrieveable: bool = False
+    undeletable: bool = False
+    layoutable: bool = False
+    urls: dict | None = None  # Resource URLs dictionary
+
 
 class ObjectDescribe(BaseModel):
     """Full describe information for an sObject."""
@@ -114,7 +175,8 @@ class ObjectDescribe(BaseModel):
     namespace_prefix: str | None = None
     fields: list[FieldInfo]
     child_relationships: list[RelationshipInfo]
-    record_type_infos: list[dict] | None = None
+    record_type_infos: list[RecordTypeInfo] | None = None
+    supported_scopes: list[SupportedScope] | None = None
 
     # Core capabilities (CRUD + access)
     queryable: bool = False
@@ -153,6 +215,14 @@ class ObjectDescribe(BaseModel):
     url_detail: str | None = None
     url_edit: str | None = None
     url_new: str | None = None
+
+    # Additional fields for 100% coverage
+    action_overrides: list[dict] | None = None  # Custom action overrides
+    listviewable: bool = False
+    lookup_layoutable: bool = False
+    named_layout_infos: list[dict] | None = None  # Named layout information
+    network_scope_field_name: str | None = None  # Network scoping field
+    urls: dict | None = None  # All resource URLs
 
 
 class BatchDescribeRequest(BaseModel):

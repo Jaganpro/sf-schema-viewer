@@ -148,7 +148,18 @@ export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
               <InfoRow label="SOAP Type" value={field.soap_type} />
               <InfoRow label="Length" value={field.length} />
               <InfoRow label="Byte Length" value={field.byte_length} />
+              {field.extra_type_info && <InfoRow label="Extra Type Info" value={field.extra_type_info} />}
             </div>
+
+            {/* HELP TEXT Section (conditional) */}
+            {field.inline_help_text && (
+              <>
+                <SectionHeader title="Help Text" />
+                <div className="bg-blue-50 border border-blue-200 rounded p-2 text-[11px] text-blue-800">
+                  {field.inline_help_text}
+                </div>
+              </>
+            )}
 
             {/* QUERYABILITY Section */}
             <SectionHeader title="Queryability (SOQL)" />
@@ -168,6 +179,7 @@ export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
               <FlagPill label="Updateable" active={!!field.updateable} activeColor="bg-cyan-100 text-cyan-700" />
               <FlagPill label="Nillable" active={field.nillable} activeColor="bg-blue-100 text-blue-700" />
               <FlagPill label="Permissionable" active={!!field.permissionable} activeColor="bg-green-100 text-green-700" />
+              <FlagPill label="Write Requires Master Read" active={!!field.write_requires_master_read} activeColor="bg-orange-100 text-orange-700" />
             </div>
 
             {/* CHARACTERISTICS Section */}
@@ -190,6 +202,9 @@ export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
               <FlagPill label="Defaulted On Create" active={!!field.defaulted_on_create} activeColor="bg-yellow-100 text-yellow-700" />
               <FlagPill label="Restricted Picklist" active={!!field.restricted_picklist} activeColor="bg-rose-100 text-rose-700" />
               <FlagPill label="AI Prediction" active={!!field.ai_prediction_field} activeColor="bg-lime-100 text-lime-700" />
+              <FlagPill label="Encrypted" active={!!field.encrypted} activeColor="bg-red-100 text-red-700" />
+              <FlagPill label="High Scale Number" active={!!field.high_scale_number} activeColor="bg-purple-100 text-purple-700" />
+              <FlagPill label="HTML Formatted" active={!!field.html_formatted} activeColor="bg-cyan-100 text-cyan-700" />
             </div>
 
             {/* NUMERIC Section (conditional) */}
@@ -210,6 +225,71 @@ export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
               <FlagPill label="Custom" active={field.custom} activeColor="bg-purple-100 text-purple-700" />
               <FlagPill label="Deprecated" active={!!field.deprecated_and_hidden} activeColor="bg-red-100 text-red-700" />
             </div>
+
+            {/* SECURITY Section (conditional - show if any security-related fields are set) */}
+            {(field.encrypted || field.mask_type || field.mask) && (
+              <>
+                <SectionHeader title="Security" />
+                <div className="flex flex-wrap gap-1.5">
+                  <FlagPill label="Encrypted" active={!!field.encrypted} activeColor="bg-red-100 text-red-700" />
+                  {field.mask_type && (
+                    <span className="px-2 py-0.5 rounded text-[11px] bg-amber-100 text-amber-700">
+                      Mask Type: {field.mask_type}
+                    </span>
+                  )}
+                  {field.mask && (
+                    <span className="px-2 py-0.5 rounded text-[11px] bg-amber-100 text-amber-700">
+                      Mask Pattern: {field.mask}
+                    </span>
+                  )}
+                  {field.mask_char && (
+                    <span className="px-2 py-0.5 rounded text-[11px] bg-amber-100 text-amber-700">
+                      Mask Char: {field.mask_char}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* AUTO-NUMBER FORMAT Section (conditional) */}
+            {field.display_format && (
+              <>
+                <SectionHeader title="Auto-Number Format" />
+                <div className="bg-gray-100 rounded p-2 font-mono text-[11px]">
+                  {field.display_format}
+                </div>
+              </>
+            )}
+
+            {/* DEPENDENT PICKLIST Section (conditional) */}
+            {field.dependent_picklist && (
+              <>
+                <SectionHeader title="Dependent Picklist" />
+                <div className="border rounded overflow-hidden">
+                  <InfoRow label="Controlling Field" value={field.controller_name} />
+                </div>
+              </>
+            )}
+
+            {/* COMPOUND FIELD Section (conditional) */}
+            {field.compound_field_name && (
+              <>
+                <SectionHeader title="Compound Field" />
+                <div className="border rounded overflow-hidden">
+                  <InfoRow label="Parent Field" value={field.compound_field_name} />
+                </div>
+              </>
+            )}
+
+            {/* GEOLOCATION Section (conditional) */}
+            {field.type === 'location' && (
+              <>
+                <SectionHeader title="Geolocation" />
+                <div className="flex flex-wrap gap-1.5">
+                  <FlagPill label="Display as Decimal" active={!!field.display_location_in_decimal} activeColor="bg-blue-100 text-blue-700" />
+                </div>
+              </>
+            )}
 
             {/* DEFAULT VALUE Section (conditional) */}
             {field.default_value && (
@@ -235,6 +315,18 @@ export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
               </>
             )}
 
+            {/* DEFAULT VALUE FORMULA Section (conditional) */}
+            {field.default_value_formula && (
+              <>
+                <SectionHeader title="Default Value Formula" />
+                <div className="border rounded bg-slate-800 p-2 overflow-x-auto max-h-24">
+                  <pre className="text-[11px] text-green-400 font-mono whitespace-pre-wrap break-all">
+                    {field.default_value_formula}
+                  </pre>
+                </div>
+              </>
+            )}
+
             {/* RELATIONSHIP Section (conditional) */}
             {isReference && (
               <>
@@ -246,6 +338,21 @@ export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
                     label="Relationship Type"
                     value={field.relationship_order === 1 ? 'Master-Detail' : 'Lookup'}
                   />
+                  {field.reference_target_field && (
+                    <InfoRow label="Target Field" value={field.reference_target_field} />
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* LOOKUP FILTER Section (conditional) */}
+            {field.filtered_lookup_info && (
+              <>
+                <SectionHeader title="Lookup Filter" />
+                <div className="bg-gray-100 rounded p-2 font-mono text-[10px] max-h-24 overflow-auto">
+                  <pre className="whitespace-pre-wrap break-all">
+                    {JSON.stringify(field.filtered_lookup_info, null, 2)}
+                  </pre>
                 </div>
               </>
             )}

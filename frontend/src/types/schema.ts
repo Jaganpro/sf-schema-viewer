@@ -55,6 +55,39 @@ export interface FieldInfo {
   soap_type?: string;
   default_value?: string;
   deprecated_and_hidden?: boolean;
+
+  // Field help & display
+  inline_help_text?: string;
+  display_format?: string;  // Auto-number format pattern
+
+  // Dependent picklist support
+  dependent_picklist?: boolean;
+  controller_name?: string;  // Controlling field name
+
+  // Compound field grouping (Address, Name components)
+  compound_field_name?: string;
+
+  // Additional type context (e.g., "personname", "plaintextarea")
+  extra_type_info?: string;
+
+  // Lookup filter info
+  filtered_lookup_info?: Record<string, unknown>;
+
+  // Encrypted field support
+  mask_type?: string;  // e.g., "ssn", "creditCard"
+  mask_char?: string;
+
+  // Rich text indicator
+  html_formatted?: boolean;
+
+  // Additional fields for 100% coverage
+  encrypted?: boolean;
+  high_scale_number?: boolean;
+  write_requires_master_read?: boolean;  // Master-detail permission
+  default_value_formula?: string;  // Formula for default value
+  reference_target_field?: string;  // External lookup target
+  display_location_in_decimal?: boolean;  // Geolocation display format
+  mask?: string;  // Input mask pattern
 }
 
 export interface RelationshipInfo {
@@ -70,6 +103,21 @@ export interface RelationshipInfo {
   // Junction object support (many-to-many relationships)
   junction_id_list_names?: string[];
   junction_reference_to?: string[];
+}
+
+export interface RecordTypeInfo {
+  record_type_id: string;
+  name: string;
+  developer_name: string;
+  active: boolean;
+  available: boolean;
+  default_record_type_mapping: boolean;
+  master: boolean;
+}
+
+export interface SupportedScope {
+  name: string;
+  label: string;
 }
 
 export interface ObjectBasicInfo {
@@ -95,6 +143,15 @@ export interface ObjectBasicInfo {
   has_subtypes?: boolean;  // Has Record Types
   description?: string;
   deployment_status?: string;
+
+  // Additional fields for 100% coverage
+  custom_setting?: boolean;
+  mru_enabled?: boolean;
+  deprecated_and_hidden?: boolean;
+  retrieveable?: boolean;
+  undeletable?: boolean;
+  layoutable?: boolean;
+  urls?: Record<string, string>;
 }
 
 export interface ObjectDescribe {
@@ -106,7 +163,8 @@ export interface ObjectDescribe {
   namespace_prefix?: string;
   fields: FieldInfo[];
   child_relationships: RelationshipInfo[];
-  record_type_infos?: Record<string, unknown>[];
+  record_type_infos?: RecordTypeInfo[];
+  supported_scopes?: SupportedScope[];
 
   // Core capabilities (CRUD + access)
   queryable?: boolean;
@@ -145,6 +203,14 @@ export interface ObjectDescribe {
   url_detail?: string;
   url_edit?: string;
   url_new?: string;
+
+  // Additional fields for 100% coverage
+  action_overrides?: Array<Record<string, unknown>>;
+  listviewable?: boolean;
+  lookup_layoutable?: boolean;
+  named_layout_infos?: Array<Record<string, unknown>>;
+  network_scope_field_name?: string;
+  urls?: Record<string, string>;
 }
 
 export interface UserInfo {

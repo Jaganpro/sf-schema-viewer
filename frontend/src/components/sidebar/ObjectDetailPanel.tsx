@@ -12,6 +12,7 @@ import {
   Loader2,
   Link,
   ExternalLink,
+  ChevronDown,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +47,27 @@ function getFieldClassification(field: FieldInfo): 'system' | 'standard' | 'cust
   return 'standard';
 }
 
+/** Field filter types for pill-based filtering */
+type FieldFilterType = 'system' | 'standard' | 'custom' | 'required' | 'unique' | 'extid';
+
+/** Field filter configuration */
+const FIELD_FILTERS: { key: FieldFilterType; label: string; activeColor: string }[] = [
+  { key: 'system', label: 'System', activeColor: 'bg-orange-100 text-orange-700' },
+  { key: 'standard', label: 'Standard', activeColor: 'bg-blue-100 text-blue-700' },
+  { key: 'custom', label: 'Custom', activeColor: 'bg-purple-100 text-purple-700' },
+  { key: 'required', label: 'Req', activeColor: 'bg-red-100 text-red-700' },
+  { key: 'unique', label: 'Unique', activeColor: 'bg-purple-100 text-purple-700' },
+  { key: 'extid', label: 'ExtId', activeColor: 'bg-blue-100 text-blue-700' },
+];
+
+/** Relationship filter types */
+type RelFilterType = 'masterDetail' | 'lookup';
+
+/** Relationship filter configuration */
+const REL_FILTERS: { key: RelFilterType; label: string; activeColor: string }[] = [
+  { key: 'masterDetail', label: 'MD', activeColor: 'bg-rose-100 text-rose-700' },
+  { key: 'lookup', label: 'Lookup', activeColor: 'bg-gray-200 text-gray-700' },
+];
 
 interface ObjectDetailPanelProps {
   objectName: string;
@@ -106,6 +128,11 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   const [relSearch, setRelSearch] = useState('');
   const [selectedField, setSelectedField] = useState<FieldInfo | null>(null);
   const [selectedRelationship, setSelectedRelationship] = useState<RelationshipInfo | null>(null);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
+
+  // Pill-based filter state
+  const [activeFieldFilters, setActiveFieldFilters] = useState<Set<FieldFilterType>>(new Set());
+  const [activeRelFilters, setActiveRelFilters] = useState<Set<RelFilterType>>(new Set());
 
   // Get selected child relationships for this object from store
   const selectedRels = selectedChildRelsByParent.get(objectName) ?? new Set<string>();
@@ -182,20 +209,66 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   // Check if object is in ERD selection
   const isInERD = selectedObjectNames.includes(objectName);
 
-  // Filter fields based on search
+  // Toggle field filter pill
+  const toggleFieldFilter = (filterKey: FieldFilterType) => {
+    setActiveFieldFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(filterKey)) {
+        next.delete(filterKey);
+      } else {
+        next.add(filterKey);
+      }
+      return next;
+    });
+  };
+
+  // Toggle relationship filter pill
+  const toggleRelFilter = (filterKey: RelFilterType) => {
+    setActiveRelFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(filterKey)) {
+        next.delete(filterKey);
+      } else {
+        next.add(filterKey);
+      }
+      return next;
+    });
+  };
+
+  // Filter fields based on pill filters + search
   const filteredFields = useMemo(() => {
     if (!objectDescribe?.fields) return [];
-    const term = fieldSearch.toLowerCase();
-    if (!term) return objectDescribe.fields;
-    return objectDescribe.fields.filter(
-      (f) =>
-        f.name.toLowerCase().includes(term) ||
-        f.label.toLowerCase().includes(term) ||
-        f.type.toLowerCase().includes(term)
-    );
-  }, [objectDescribe?.fields, fieldSearch]);
 
-  // Filter child relationships based on search AND object type filters
+    let fields = objectDescribe.fields;
+
+    // Apply pill filters (OR logic - show if matches ANY active filter)
+    if (activeFieldFilters.size > 0) {
+      fields = fields.filter(field => {
+        if (activeFieldFilters.has('system') && SYSTEM_FIELDS.has(field.name)) return true;
+        if (activeFieldFilters.has('standard') && !field.custom && !SYSTEM_FIELDS.has(field.name)) return true;
+        if (activeFieldFilters.has('custom') && field.custom) return true;
+        if (activeFieldFilters.has('required') && !field.nillable) return true;
+        if (activeFieldFilters.has('unique') && field.unique) return true;
+        if (activeFieldFilters.has('extid') && field.external_id) return true;
+        return false;
+      });
+    }
+
+    // Apply search filter
+    const term = fieldSearch.toLowerCase();
+    if (term) {
+      fields = fields.filter(
+        (f) =>
+          f.name.toLowerCase().includes(term) ||
+          f.label.toLowerCase().includes(term) ||
+          f.type.toLowerCase().includes(term)
+      );
+    }
+
+    return fields;
+  }, [objectDescribe?.fields, fieldSearch, activeFieldFilters]);
+
+  // Filter child relationships based on pill filters, search, AND object type filters
   const { filteredRelationships, hiddenByFiltersCount } = useMemo(() => {
     if (!objectDescribe?.child_relationships) {
       return { filteredRelationships: [], hiddenByFiltersCount: 0 };
@@ -213,6 +286,15 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       return true;
     });
 
+    // Apply pill filters (OR logic - show if matches ANY active filter)
+    if (activeRelFilters.size > 0) {
+      filtered = filtered.filter(rel => {
+        if (activeRelFilters.has('masterDetail') && rel.cascade_delete) return true;
+        if (activeRelFilters.has('lookup') && !rel.cascade_delete) return true;
+        return false;
+      });
+    }
+
     // Apply search term filter
     const term = relSearch.toLowerCase();
     if (term) {
@@ -225,7 +307,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     }
 
     return { filteredRelationships: filtered, hiddenByFiltersCount: hiddenCount };
-  }, [objectDescribe?.child_relationships, relSearch, objectTypeFilters]);
+  }, [objectDescribe?.child_relationships, relSearch, objectTypeFilters, activeRelFilters]);
 
   // Helper to generate unique key for a relationship
   const getRelKey = (rel: RelationshipInfo) => `${rel.child_object}.${rel.field}`;
@@ -349,13 +431,13 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
         <div className="flex items-center gap-1.5 mt-2">
           <Badge variant={classification.variant}>{classification.label}</Badge>
           {objectInfo.searchable && (
-            <Badge variant="outline" className="text-blue-600 border-blue-200">
+            <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">
               <Search className="h-3 w-3 mr-1" />
               SOSL
             </Badge>
           )}
           {objectInfo.triggerable && (
-            <Badge variant="outline" className="text-amber-600 border-amber-200">
+            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
               <Zap className="h-3 w-3 mr-1" />
               Triggers
             </Badge>
@@ -388,7 +470,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
               Fields ({objectDescribe.fields.length})
             </TabsTrigger>
             <TabsTrigger value="relationships" className="text-xs">
-              Child Rels ({filteredRelationships.length})
+              Relationships ({filteredRelationships.length})
             </TabsTrigger>
           </TabsList>
 
@@ -414,6 +496,31 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                     onClick={() => setFieldSearch('')}
                   >
                     <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {/* Filter pills */}
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {FIELD_FILTERS.map(filter => (
+                  <button
+                    key={filter.key}
+                    onClick={() => toggleFieldFilter(filter.key)}
+                    className={cn(
+                      'px-2 py-0.5 rounded text-[11px] font-medium transition-all',
+                      activeFieldFilters.has(filter.key)
+                        ? filter.activeColor
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+                {activeFieldFilters.size > 0 && (
+                  <button
+                    onClick={() => setActiveFieldFilters(new Set())}
+                    className="px-2 py-0.5 rounded text-[11px] text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  >
+                    ✕ Clear
                   </button>
                 )}
               </div>
@@ -546,6 +653,31 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                   </button>
                 )}
               </div>
+              {/* Filter pills */}
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {REL_FILTERS.map(filter => (
+                  <button
+                    key={filter.key}
+                    onClick={() => toggleRelFilter(filter.key)}
+                    className={cn(
+                      'px-2 py-0.5 rounded text-[11px] font-medium transition-all',
+                      activeRelFilters.has(filter.key)
+                        ? filter.activeColor
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+                {activeRelFilters.size > 0 && (
+                  <button
+                    onClick={() => setActiveRelFilters(new Set())}
+                    className="px-2 py-0.5 rounded text-[11px] text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  >
+                    ✕ Clear
+                  </button>
+                )}
+              </div>
               {/* Quick action buttons */}
               <div className="flex gap-1.5 text-xs">
                 <button
@@ -601,6 +733,9 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                                 {rel.field}
                               </span>
                             </div>
+                            <div className="text-xs text-sf-text-muted truncate">
+                              <span className="font-mono">{rel.relationship_name || '—'}</span>
+                            </div>
                           </div>
                           {/* Column 3: Badge (always visible) */}
                           <Badge
@@ -637,29 +772,100 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                   <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
                     Identity
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">API Name</span>
-                      <span className="font-mono text-sf-text">{objectDescribe.name}</span>
+                  <div className="border rounded overflow-hidden">
+                    <div className="flex border-b border-gray-100">
+                      <div className="w-1/3 py-1.5 px-2 text-[11px] text-gray-500 font-medium bg-gray-50">
+                        API Name
+                      </div>
+                      <div className="w-2/3 py-1.5 px-2 text-[11px] text-gray-700 font-mono">
+                        {objectDescribe.name}
+                      </div>
                     </div>
-                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">Key Prefix</span>
-                      <span className="font-mono text-sf-text">{objectDescribe.key_prefix || '—'}</span>
+                    <div className="flex border-b border-gray-100">
+                      <div className="w-1/3 py-1.5 px-2 text-[11px] text-gray-500 font-medium bg-gray-50">
+                        Key Prefix
+                      </div>
+                      <div className="w-2/3 py-1.5 px-2 text-[11px] text-gray-700 font-mono">
+                        {objectDescribe.key_prefix || '—'}
+                      </div>
                     </div>
-                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">Plural Label</span>
-                      <span className="text-sf-text">{objectDescribe.label_plural}</span>
+                    <div className="flex border-b border-gray-100">
+                      <div className="w-1/3 py-1.5 px-2 text-[11px] text-gray-500 font-medium bg-gray-50">
+                        Plural Label
+                      </div>
+                      <div className="w-2/3 py-1.5 px-2 text-[11px] text-gray-700">
+                        {objectDescribe.label_plural}
+                      </div>
                     </div>
-                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">Namespace</span>
-                      <span className="font-mono text-sf-text">{objectDescribe.namespace_prefix || '—'}</span>
+                    <div className="flex border-b border-gray-100">
+                      <div className="w-1/3 py-1.5 px-2 text-[11px] text-gray-500 font-medium bg-gray-50">
+                        Namespace
+                      </div>
+                      <div className="w-2/3 py-1.5 px-2 text-[11px] text-gray-700 font-mono">
+                        {objectDescribe.namespace_prefix || '—'}
+                      </div>
                     </div>
-                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">Deployment Status</span>
-                      <span className="text-sf-text">{objectDescribe.deployment_status || '—'}</span>
+                    <div className="flex">
+                      <div className="w-1/3 py-1.5 px-2 text-[11px] text-gray-500 font-medium bg-gray-50">
+                        Deployment Status
+                      </div>
+                      <div className="w-2/3 py-1.5 px-2 text-[11px] text-gray-700">
+                        {objectDescribe.deployment_status || '—'}
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Record Types Section */}
+                {objectDescribe.record_type_infos && objectDescribe.record_type_infos.length > 0 && (
+                  <div>
+                    <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                      Record Types ({objectDescribe.record_type_infos.length})
+                    </div>
+                    <div className="border rounded overflow-hidden divide-y divide-gray-100">
+                      {objectDescribe.record_type_infos.map((rt, idx) => (
+                        <div key={idx} className="px-3 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-sf-text truncate" title={rt.name}>
+                              {rt.name}
+                            </span>
+                            <div className="flex gap-1 shrink-0">
+                              {rt.defaultRecordTypeMapping && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 uppercase font-medium">
+                                  Default
+                                </span>
+                              )}
+                              {rt.master && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-200 text-gray-600 uppercase font-medium">
+                                  Master
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-xs text-sf-text-muted font-mono truncate" title={rt.developerName}>
+                            {rt.developerName}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Supported Scopes Section */}
+                {objectDescribe.supported_scopes && objectDescribe.supported_scopes.length > 0 && (
+                  <div>
+                    <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                      Supported Scopes
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {objectDescribe.supported_scopes.map((scope, idx) => (
+                        <span key={idx} className="px-2 py-0.5 rounded text-[11px] bg-sky-100 text-sky-700 font-medium">
+                          {scope.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* 3. Capabilities Section - Pill Grid */}
                 <div>
@@ -790,12 +996,9 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                     Object Type
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    <span className={cn(
-                      "px-2 py-0.5 rounded text-[11px] font-medium",
-                      objectDescribe.custom ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
-                    )}>
-                      {objectDescribe.custom ? "Custom" : "Standard"}
-                    </span>
+                    <Badge variant={objectDescribe.custom ? 'custom' : 'standard'}>
+                      {objectDescribe.custom ? 'Custom' : 'Standard'}
+                    </Badge>
                     <span className={cn(
                       "px-2 py-0.5 rounded text-[11px] font-medium",
                       objectDescribe.custom_setting ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-400"
@@ -822,7 +1025,34 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                   </div>
                 </div>
 
-                {/* 6. Quick Links Section */}
+                {/* 6. API Capabilities Section - Pill Grid */}
+                <div>
+                  <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                    API Capabilities
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.listviewable ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.listviewable && "✓ "}Listviewable
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.lookup_layoutable ? "bg-cyan-100 text-cyan-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.lookup_layoutable && "✓ "}Lookup Layoutable
+                    </span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      objectDescribe.search_layoutable ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-400"
+                    )}>
+                      {objectDescribe.search_layoutable && "✓ "}Search Layoutable
+                    </span>
+                  </div>
+                </div>
+
+                {/* 7. Quick Links Section */}
                 {(objectDescribe.url_detail || objectDescribe.url_edit || objectDescribe.url_new) && (
                   <div>
                     <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
@@ -865,6 +1095,93 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                     </div>
                   </div>
                 )}
+
+                {/* 8. Advanced Metadata Section - Collapsible */}
+                <div className="mt-4 border-t pt-4">
+                  <button
+                    onClick={() => setAdvancedExpanded(!advancedExpanded)}
+                    className={cn(
+                      "flex items-center justify-between w-full text-left px-3 py-2 rounded-md transition-colors",
+                      "hover:bg-gray-100",
+                      advancedExpanded ? "bg-gray-100" : "bg-gray-50"
+                    )}
+                  >
+                    <span className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">
+                      Advanced Metadata
+                    </span>
+                    <ChevronDown className={cn(
+                      "h-4 w-4 text-gray-500 transition-transform duration-200",
+                      advancedExpanded && "rotate-180"
+                    )} />
+                  </button>
+
+                  {advancedExpanded && (
+                    <div className="mt-3 space-y-4">
+                      {/* Network Scope */}
+                      {objectDescribe.network_scope_field_name && (
+                        <div>
+                          <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                            Network Scope Field
+                          </div>
+                          <span className="font-mono text-[11px] text-gray-700">{objectDescribe.network_scope_field_name}</span>
+                        </div>
+                      )}
+
+                      {/* Action Overrides */}
+                      {objectDescribe.action_overrides && objectDescribe.action_overrides.length > 0 && (
+                        <div>
+                          <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                            Action Overrides ({objectDescribe.action_overrides.length})
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {objectDescribe.action_overrides.map((action, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[11px] font-medium">
+                                {(action as Record<string, unknown>).name as string || 'Unknown'}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Named Layout Infos */}
+                      {objectDescribe.named_layout_infos && objectDescribe.named_layout_infos.length > 0 && (
+                        <div>
+                          <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                            Named Layouts ({objectDescribe.named_layout_infos.length})
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {objectDescribe.named_layout_infos.map((layout, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded text-[11px] font-medium">
+                                {(layout as Record<string, unknown>).name as string || 'Unknown'}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* API URLs - Table Format */}
+                      {objectDescribe.urls && Object.keys(objectDescribe.urls).length > 0 && (
+                        <div>
+                          <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                            API URLs
+                          </div>
+                          <div className="border rounded overflow-hidden">
+                            {Object.entries(objectDescribe.urls).map(([key, url], index, arr) => (
+                              <div key={key} className={cn("flex", index < arr.length - 1 && "border-b border-gray-100")}>
+                                <div className="w-1/3 py-1.5 px-2 text-[11px] text-gray-500 font-medium bg-gray-50">
+                                  {key}
+                                </div>
+                                <div className="w-2/3 py-1.5 px-2 text-[11px] text-gray-700 font-mono break-all">
+                                  {url as string}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>

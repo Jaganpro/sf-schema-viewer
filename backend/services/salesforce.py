@@ -13,7 +13,9 @@ from models.schema import (
     FieldInfo,
     ObjectBasicInfo,
     ObjectDescribe,
+    RecordTypeInfo,
     RelationshipInfo,
+    SupportedScope,
 )
 
 # Global cache for list_objects results
@@ -103,6 +105,14 @@ class SalesforceService:
                     has_subtypes=obj.get("hasSubtypes", False),  # Has Record Types
                     description=obj.get("description"),
                     deployment_status=obj.get("deploymentStatus"),
+                    # Additional flags for 100% coverage
+                    custom_setting=obj.get("customSetting", False),
+                    mru_enabled=obj.get("mruEnabled", False),
+                    deprecated_and_hidden=obj.get("deprecatedAndHidden", False),
+                    retrieveable=obj.get("retrieveable", False),
+                    undeletable=obj.get("undeletable", False),
+                    layoutable=obj.get("layoutable", False),
+                    urls=obj.get("urls"),
                 )
             )
 
@@ -194,6 +204,31 @@ class SalesforceService:
                     soap_type=f.get("soapType"),
                     default_value=default_value_str,
                     deprecated_and_hidden=f.get("deprecatedAndHidden", False),
+                    # Field help & display
+                    inline_help_text=f.get("inlineHelpText"),
+                    display_format=f.get("displayFormat"),
+                    # Dependent picklist support
+                    dependent_picklist=f.get("dependentPicklist", False),
+                    controller_name=f.get("controllerName"),
+                    # Compound field grouping
+                    compound_field_name=f.get("compoundFieldName"),
+                    # Additional type context
+                    extra_type_info=f.get("extraTypeInfo"),
+                    # Lookup filter info
+                    filtered_lookup_info=f.get("filteredLookupInfo"),
+                    # Encrypted field support
+                    mask_type=f.get("maskType"),
+                    mask_char=f.get("maskChar"),
+                    # Rich text indicator
+                    html_formatted=f.get("htmlFormatted", False),
+                    # Additional fields for 100% coverage
+                    encrypted=f.get("encrypted", False),
+                    high_scale_number=f.get("highScaleNumber", False),
+                    write_requires_master_read=f.get("writeRequiresMasterRead", False),
+                    default_value_formula=f.get("defaultValueFormula"),
+                    reference_target_field=f.get("referenceTargetField"),
+                    display_location_in_decimal=f.get("displayLocationInDecimal", False),
+                    mask=f.get("mask"),
                 )
             )
 
@@ -215,6 +250,31 @@ class SalesforceService:
                 )
             )
 
+        # Transform supported scopes (list view filter scopes)
+        supported_scopes = []
+        for scope in describe.get("supportedScopes", []):
+            supported_scopes.append(
+                SupportedScope(
+                    name=scope.get("name", ""),
+                    label=scope.get("label", ""),
+                )
+            )
+
+        # Transform record type infos
+        record_type_infos = []
+        for rt in describe.get("recordTypeInfos", []):
+            record_type_infos.append(
+                RecordTypeInfo(
+                    record_type_id=rt.get("recordTypeId", ""),
+                    name=rt.get("name", ""),
+                    developer_name=rt.get("developerName", ""),
+                    active=rt.get("active", False),
+                    available=rt.get("available", False),
+                    default_record_type_mapping=rt.get("defaultRecordTypeMapping", False),
+                    master=rt.get("master", False),
+                )
+            )
+
         return ObjectDescribe(
             name=describe["name"],
             label=describe["label"],
@@ -224,7 +284,8 @@ class SalesforceService:
             namespace_prefix=describe.get("namespacePrefix"),
             fields=fields,
             child_relationships=child_relationships,
-            record_type_infos=describe.get("recordTypeInfos"),
+            record_type_infos=record_type_infos if record_type_infos else None,
+            supported_scopes=supported_scopes if supported_scopes else None,
             # Core capabilities (CRUD + access)
             queryable=describe.get("queryable", False),
             createable=describe.get("createable", False),
@@ -257,6 +318,14 @@ class SalesforceService:
             url_detail=describe.get("urlDetail"),
             url_edit=describe.get("urlEdit"),
             url_new=describe.get("urlNew"),
+            # Additional fields for 100% coverage
+            # Note: use "or False" pattern because .get() returns None if key exists with None value
+            action_overrides=describe.get("actionOverrides"),
+            listviewable=describe.get("listviewable") or False,
+            lookup_layoutable=describe.get("lookupLayoutable") or False,
+            named_layout_infos=describe.get("namedLayoutInfos"),
+            network_scope_field_name=describe.get("networkScopeFieldName"),
+            urls=describe.get("urls"),
         )
 
     def describe_objects(
