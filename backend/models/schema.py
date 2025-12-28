@@ -23,6 +23,41 @@ class FieldInfo(BaseModel):
     calculated: bool = False
     formula: str | None = None
 
+    # Queryability (SOQL capabilities)
+    filterable: bool = False
+    sortable: bool = False
+    groupable: bool = False
+    aggregatable: bool = False
+    search_prefilterable: bool = False
+    query_by_distance: bool = False
+
+    # Permissions (CRUD at field level)
+    createable: bool = False
+    updateable: bool = False
+    permissionable: bool = False
+
+    # Field Characteristics
+    case_sensitive: bool = False
+    name_field: bool = False
+    name_pointing: bool = False
+    id_lookup: bool = False
+    polymorphic_foreign_key: bool = False
+
+    # Field Type Flags
+    auto_number: bool = False
+    defaulted_on_create: bool = False
+    restricted_picklist: bool = False
+    ai_prediction_field: bool = False
+
+    # Numeric (additional)
+    digits: int | None = None
+    byte_length: int | None = None
+
+    # Metadata
+    soap_type: str | None = None
+    default_value: str | None = None
+    deprecated_and_hidden: bool = False
+
 
 class RelationshipInfo(BaseModel):
     """Information about a child relationship."""

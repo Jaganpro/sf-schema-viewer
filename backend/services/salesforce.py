@@ -141,6 +141,12 @@ class SalesforceService:
             if f["type"] == "picklist" or f["type"] == "multipicklist":
                 picklist_values = [pv["value"] for pv in f.get("picklistValues", [])]
 
+            # Handle default value - convert to string if present
+            default_val = f.get("defaultValue")
+            default_value_str = (
+                str(default_val) if default_val is not None else None
+            )
+
             fields.append(
                 FieldInfo(
                     name=f["name"],
@@ -159,6 +165,35 @@ class SalesforceService:
                     picklist_values=picklist_values,
                     calculated=f.get("calculated", False),
                     formula=f.get("calculatedFormula"),
+                    # Queryability (SOQL capabilities)
+                    filterable=f.get("filterable", False),
+                    sortable=f.get("sortable", False),
+                    groupable=f.get("groupable", False),
+                    aggregatable=f.get("aggregatable", False),
+                    search_prefilterable=f.get("searchPrefilterable", False),
+                    query_by_distance=f.get("queryByDistance", False),
+                    # Permissions (CRUD at field level)
+                    createable=f.get("createable", False),
+                    updateable=f.get("updateable", False),
+                    permissionable=f.get("permissionable", False),
+                    # Field Characteristics
+                    case_sensitive=f.get("caseSensitive", False),
+                    name_field=f.get("nameField", False),
+                    name_pointing=f.get("namePointing", False),
+                    id_lookup=f.get("idLookup", False),
+                    polymorphic_foreign_key=f.get("polymorphicForeignKey", False),
+                    # Field Type Flags
+                    auto_number=f.get("autoNumber", False),
+                    defaulted_on_create=f.get("defaultedOnCreate", False),
+                    restricted_picklist=f.get("restrictedPicklist", False),
+                    ai_prediction_field=f.get("aiPredictionField", False),
+                    # Numeric (additional)
+                    digits=f.get("digits"),
+                    byte_length=f.get("byteLength"),
+                    # Metadata
+                    soap_type=f.get("soapType"),
+                    default_value=default_value_str,
+                    deprecated_and_hidden=f.get("deprecatedAndHidden", False),
                 )
             )
 

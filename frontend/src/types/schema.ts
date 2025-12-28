@@ -20,6 +20,41 @@ export interface FieldInfo {
   picklist_values?: string[];
   calculated: boolean;
   formula?: string;
+
+  // Queryability (SOQL capabilities)
+  filterable?: boolean;
+  sortable?: boolean;
+  groupable?: boolean;
+  aggregatable?: boolean;
+  search_prefilterable?: boolean;
+  query_by_distance?: boolean;
+
+  // Permissions (CRUD at field level)
+  createable?: boolean;
+  updateable?: boolean;
+  permissionable?: boolean;
+
+  // Field Characteristics
+  case_sensitive?: boolean;
+  name_field?: boolean;
+  name_pointing?: boolean;
+  id_lookup?: boolean;
+  polymorphic_foreign_key?: boolean;
+
+  // Field Type Flags
+  auto_number?: boolean;
+  defaulted_on_create?: boolean;
+  restricted_picklist?: boolean;
+  ai_prediction_field?: boolean;
+
+  // Numeric (additional)
+  digits?: number;
+  byte_length?: number;
+
+  // Metadata
+  soap_type?: string;
+  default_value?: string;
+  deprecated_and_hidden?: boolean;
 }
 
 export interface RelationshipInfo {

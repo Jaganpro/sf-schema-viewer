@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn, getFieldTypeIcon } from '@/lib/utils';
 import { isFilteredByType } from '@/lib/objectTypeFilters';
 import { useAppStore } from '../../store';
+import { FieldDetailModal } from './FieldDetailModal';
 import type { FieldInfo, RelationshipInfo } from '../../types/schema';
 
 /** System fields that exist on most Salesforce objects (audit/identity fields) */
@@ -113,6 +114,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   } = useAppStore();
   const [fieldSearch, setFieldSearch] = useState('');
   const [relSearch, setRelSearch] = useState('');
+  const [selectedField, setSelectedField] = useState<FieldInfo | null>(null);
 
   // Get selected child relationships for this object from store
   const selectedRels = selectedChildRelsByParent.get(objectName) ?? new Set<string>();
@@ -457,19 +459,22 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                   </div>
                 ) : (
                   filteredFields.map((field) => (
-                    <label
+                    <div
                       key={field.name}
-                      className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer block"
+                      className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer"
+                      onClick={() => setSelectedField(field)}
                     >
                       <div
                         className="grid items-center gap-2"
                         style={{ gridTemplateColumns: 'auto auto 1fr auto' }}
                       >
-                        {/* Column 1: Checkbox */}
-                        <Checkbox
-                          checked={selectedFields.has(field.name)}
-                          onCheckedChange={() => toggleFieldSelection(objectName, field.name)}
-                        />
+                        {/* Column 1: Checkbox - stop propagation to prevent drawer open */}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedFields.has(field.name)}
+                            onCheckedChange={() => toggleFieldSelection(objectName, field.name)}
+                          />
+                        </div>
                         {/* Column 2: Type icon */}
                         <span className="text-gray-400">{getFieldTypeIcon(field.type)}</span>
                         {/* Column 3: Label + metadata (truncates) */}
@@ -518,7 +523,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                           )}
                         </div>
                       </div>
-                    </label>
+                    </div>
                   ))
                 )}
               </div>
@@ -910,6 +915,12 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
           </div>
         </div>
       )}
+
+      {/* Field Detail Modal */}
+      <FieldDetailModal
+        field={selectedField}
+        onClose={() => setSelectedField(null)}
+      />
     </div>
   );
 }
