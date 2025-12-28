@@ -1,7 +1,7 @@
 """OAuth authentication routes for Salesforce."""
 
 import secrets
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Cookie, HTTPException, Response
@@ -34,20 +34,6 @@ API_VERSION_LABELS = {
     "58.0": "Spring '24",
     "57.0": "Winter '24",
 }
-
-
-def extract_instance_name(instance_url: str) -> str:
-    """Extract instance name from Salesforce instance URL.
-
-    Examples:
-        https://orgfarm-ef68b.my.salesforce.com → orgfarm-ef68b
-        https://na123.salesforce.com → na123
-    """
-    if not instance_url:
-        return ""
-    host = urlparse(instance_url).netloc
-    # Get the first part of the hostname (before first dot)
-    return host.split(".")[0] if host else ""
 
 
 def get_api_version_label(version: str) -> str:
@@ -149,7 +135,7 @@ async def callback(code: str, state: str, response: Response):
         locale=user_info.get("locale"),
         user_type=user_info.get("user_type"),
         api_urls=user_info.get("urls"),
-        org_name=user_info.get("organization_id"),  # Will be fetched on-demand for full name
+        org_name=None,  # Fetched on-demand via SOQL (identity URL doesn't have org name)
     )
 
     # Set session cookie and redirect to frontend
@@ -183,9 +169,9 @@ async def get_status(session_id: str | None = Cookie(default=None)):
             display_name=session.display_name,
             email=session.email,
             org_id=session.org_id,
-            org_name=session.org_name,  # For header display
-            org_type=session.org_type,  # Edition (fetched on first session-info call)
-            instance_name=extract_instance_name(session.instance_url),
+            org_name=session.org_name,  # For header display (cached from SOQL)
+            org_type=session.org_type,  # Edition (cached from SOQL)
+            instance_name=session.instance_name,  # Salesforce instance (cached from SOQL)
             api_version_label=get_api_version_label(settings.SF_API_VERSION),
         ),
         instance_url=session.instance_url,
@@ -302,8 +288,14 @@ async def get_session_info(
             org_type = org_record.get("OrganizationType")
             is_sandbox = org_record.get("IsSandbox", False)
             default_currency = org_record.get("DefaultCurrencyIsoCode")
+            instance_name = org_record.get("InstanceName")  # e.g., "NA124"
             # Cache org info in session for header display
-            session_store.update_org_info(session_id, org_name=org_name, org_type=org_type)
+            session_store.update_org_info(
+                session_id,
+                org_name=org_name,
+                org_type=org_type,
+                instance_name=instance_name,
+            )
     except Exception:
         # If SOQL fails, use fallback values
         org_name = session.display_name  # Fallback to display name

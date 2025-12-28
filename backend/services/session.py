@@ -33,6 +33,7 @@ class Session:
     api_urls: dict | None = None
     org_name: str | None = None
     org_type: str | None = None  # Cached after first session-info fetch
+    instance_name: str | None = None  # Salesforce instance (e.g., "NA124")
 
 
 class SessionStore:
@@ -123,7 +124,11 @@ class SessionStore:
         return False
 
     def update_org_info(
-        self, session_id: str, org_name: str | None = None, org_type: str | None = None
+        self,
+        session_id: str,
+        org_name: str | None = None,
+        org_type: str | None = None,
+        instance_name: str | None = None,
     ) -> bool:
         """Update org info in session (cached after first session-info fetch)."""
         session = self._sessions.get(session_id)
@@ -132,6 +137,8 @@ class SessionStore:
                 session.org_name = org_name
             if org_type:
                 session.org_type = org_type
+            if instance_name:
+                session.instance_name = instance_name
             return True
         return False
 

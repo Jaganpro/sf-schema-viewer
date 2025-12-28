@@ -27,15 +27,11 @@ export default function Header() {
     await logout();
   };
 
-  // Get display values for header
+  // Get display values for header (org info is cached after first session-info fetch)
   const orgDisplayName = authStatus?.user?.org_name || authStatus?.user?.display_name || 'Salesforce Org';
-  const orgId = authStatus?.user?.org_id || '';
   const instanceName = authStatus?.user?.instance_name || '';
   const orgType = authStatus?.user?.org_type || 'Salesforce';
   const apiVersionLabel = authStatus?.user?.api_version_label || '';
-
-  // Truncate org ID for display (e.g., "00Dg8..." from "00Dg8000000FqKrEAK")
-  const truncateOrgId = (id: string) => id ? id.slice(0, 5) + '...' : '';
 
   return (
     <>
@@ -57,14 +53,9 @@ export default function Header() {
                            hover:bg-white/10 hover:border-white/50 transition-all cursor-pointer"
                 title="Click to view session details"
               >
-                {/* Line 1: Org Name (Org ID truncated) • Instance */}
+                {/* Line 1: Org Name • Instance */}
                 <span className="block text-sm font-medium">
                   {orgDisplayName}
-                  {orgId && (
-                    <span className="text-white/60 ml-1.5 text-xs">
-                      ({truncateOrgId(orgId)})
-                    </span>
-                  )}
                   {instanceName && (
                     <>
                       <span className="text-white/40 mx-1.5">•</span>
