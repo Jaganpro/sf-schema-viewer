@@ -455,7 +455,7 @@ export default function ObjectPicker() {
       ) : (
         <>
           {/* Search */}
-          <div className="px-4 py-3 relative">
+          <div className="px-4 pt-3 pb-2 relative">
             <Input
               type="text"
               placeholder="Search objects..."
@@ -474,10 +474,7 @@ export default function ObjectPicker() {
           </div>
 
           {/* Classification Filter Chips */}
-          <div className="px-4 py-3 border-b border-gray-100">
-            <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-2">
-              Filters
-            </div>
+          <div className="px-4 pt-2 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-600 font-medium">Show:</span>
               <div className="flex flex-wrap gap-1.5">
@@ -504,7 +501,7 @@ export default function ObjectPicker() {
 
             {/* Show only new objects checkbox */}
             {newObjectNames.size > 0 && (
-              <div className="flex flex-col gap-1 mt-2.5">
+              <div className="flex flex-col gap-1 mt-2">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="show-only-new"
