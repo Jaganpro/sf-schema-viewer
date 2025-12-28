@@ -339,7 +339,10 @@ export default function ObjectPicker() {
 
   const handleClearAll = useCallback(() => {
     clearAllSelections();
-  }, [clearAllSelections]);
+    // Also clear search to reset the view
+    setLocalSearch('');
+    setSearchTerm('');
+  }, [clearAllSelections, setSearchTerm]);
 
   if (!sidebarOpen) {
     return (
