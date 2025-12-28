@@ -218,17 +218,15 @@ export default function SchemaFlow() {
           </button>
         </Panel>
 
-        {/* Empty state */}
+        {/* Empty state - true center, compact size */}
         {nodes.length === 0 && !isLoadingDescribe && (
-          <Panel position="top-center" className="pointer-events-none">
-            <div className="bg-white border border-gray-300 rounded-sm px-12 py-8 text-center shadow-sm">
-              <BarChart3 className="h-12 w-12 mx-auto mb-4 text-sf-blue" />
-              <h3 className="m-0 mb-2 text-sf-text text-lg font-semibold">No Objects Selected</h3>
-              <p className="m-0 text-sf-text-muted text-sm">
-                Select objects from the sidebar to visualize their schema
-              </p>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-white/95 border border-gray-200 rounded-lg px-6 py-4 text-center shadow-sm">
+              <BarChart3 className="h-8 w-8 mx-auto mb-2 text-sf-blue/70" />
+              <h3 className="m-0 mb-1 text-gray-600 text-sm font-medium">No Objects Selected</h3>
+              <p className="m-0 text-gray-400 text-xs">Select objects from the sidebar</p>
             </div>
-          </Panel>
+          </div>
         )}
 
         {/* Loading state */}
