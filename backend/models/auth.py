@@ -16,13 +16,14 @@ class TokenResponse(BaseModel):
 
 
 class UserInfo(BaseModel):
-    """Salesforce user information."""
+    """Salesforce user information for header display."""
 
     user_id: str
     username: str
     display_name: str
     email: str
     org_id: str
+    org_name: str | None = None  # For header display
 
 
 class AuthStatus(BaseModel):
@@ -31,3 +32,54 @@ class AuthStatus(BaseModel):
     is_authenticated: bool
     user: UserInfo | None = None
     instance_url: str | None = None
+
+
+# ============================================================================
+# Session Info Models (for detailed session popup)
+# ============================================================================
+
+
+class SessionUserInfo(BaseModel):
+    """Extended user information from Salesforce identity URL."""
+
+    user_id: str
+    username: str
+    display_name: str
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    timezone: str | None = None
+    language: str | None = None
+    locale: str | None = None
+    user_type: str | None = None
+
+
+class SessionOrgInfo(BaseModel):
+    """Organization information from SOQL query."""
+
+    org_id: str
+    org_name: str
+    org_type: str | None = None  # Edition: Developer, Enterprise, etc.
+    is_sandbox: bool = False
+    is_multi_currency: bool = False
+    default_currency: str | None = None
+    person_accounts_enabled: bool = False
+
+
+class SessionConnectionInfo(BaseModel):
+    """Connection/API information."""
+
+    api_version: str
+    instance_url: str
+    rest_endpoint: str | None = None
+    soap_endpoint: str | None = None
+
+
+class SessionInfo(BaseModel):
+    """Complete session information for popup modal."""
+
+    connection: SessionConnectionInfo
+    user: SessionUserInfo
+    organization: SessionOrgInfo
+    profile_id: str | None = None
+    profile_name: str | None = None

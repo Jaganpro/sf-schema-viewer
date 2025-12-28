@@ -8,6 +8,7 @@ import type {
   BatchDescribeResponse,
   ObjectBasicInfo,
   ObjectDescribe,
+  SessionInfo,
 } from '../types/schema';
 
 class ApiError extends Error {
@@ -56,6 +57,12 @@ export const api = {
         method: 'POST',
         credentials: 'include',
       });
+    },
+
+    /** Get detailed session information for popup modal */
+    getSessionInfo: (apiVersion?: string): Promise<SessionInfo> => {
+      const params = apiVersion ? `?api_version=${encodeURIComponent(apiVersion)}` : '';
+      return fetchJson(`/auth/session-info${params}`);
     },
   },
 

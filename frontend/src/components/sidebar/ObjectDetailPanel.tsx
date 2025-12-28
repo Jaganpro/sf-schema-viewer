@@ -830,7 +830,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                               {rt.name}
                             </span>
                             <div className="flex gap-1 shrink-0">
-                              {rt.defaultRecordTypeMapping && (
+                              {rt.default_record_type_mapping && (
                                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 uppercase font-medium">
                                   Default
                                 </span>
@@ -842,8 +842,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                               )}
                             </div>
                           </div>
-                          <div className="text-xs text-sf-text-muted font-mono truncate" title={rt.developerName}>
-                            {rt.developerName}
+                          <div className="text-xs text-sf-text-muted font-mono truncate" title={rt.developer_name}>
+                            {rt.developer_name}
                           </div>
                         </div>
                       ))}

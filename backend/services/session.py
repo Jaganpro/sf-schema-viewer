@@ -23,6 +23,15 @@ class Session:
     org_id: str
     created_at: datetime = field(default_factory=datetime.now)
     expires_at: datetime | None = None
+    # Extended fields from identity URL (for session info popup)
+    first_name: str | None = None
+    last_name: str | None = None
+    timezone: str | None = None
+    language: str | None = None
+    locale: str | None = None
+    user_type: str | None = None
+    api_urls: dict | None = None
+    org_name: str | None = None
 
 
 class SessionStore:
@@ -47,6 +56,15 @@ class SessionStore:
         display_name: str,
         email: str,
         org_id: str,
+        # Extended fields from identity URL
+        first_name: str | None = None,
+        last_name: str | None = None,
+        timezone: str | None = None,
+        language: str | None = None,
+        locale: str | None = None,
+        user_type: str | None = None,
+        api_urls: dict | None = None,
+        org_name: str | None = None,
     ) -> str:
         """Create a new session and return the session ID."""
         session_id = secrets.token_urlsafe(32)
@@ -63,6 +81,14 @@ class SessionStore:
             email=email,
             org_id=org_id,
             expires_at=expires_at,
+            first_name=first_name,
+            last_name=last_name,
+            timezone=timezone,
+            language=language,
+            locale=locale,
+            user_type=user_type,
+            api_urls=api_urls,
+            org_name=org_name,
         )
         return session_id
 

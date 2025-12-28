@@ -8,8 +8,16 @@ from fastapi import APIRouter, Cookie, HTTPException, Response
 from fastapi.responses import RedirectResponse
 
 from config import settings
-from models.auth import AuthStatus, UserInfo
+from models.auth import (
+    AuthStatus,
+    UserInfo,
+    SessionInfo,
+    SessionUserInfo,
+    SessionOrgInfo,
+    SessionConnectionInfo,
+)
 from services.session import session_store
+from services.salesforce import SalesforceService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -88,7 +96,7 @@ async def callback(code: str, state: str, response: Response):
 
     user_info = user_response.json()
 
-    # Create session
+    # Create session with extended fields from identity URL
     session_id = session_store.create_session(
         access_token=tokens["access_token"],
         refresh_token=tokens.get("refresh_token"),
@@ -98,6 +106,15 @@ async def callback(code: str, state: str, response: Response):
         display_name=user_info["display_name"],
         email=user_info["email"],
         org_id=user_info["organization_id"],
+        # Extended fields from identity URL
+        first_name=user_info.get("first_name"),
+        last_name=user_info.get("last_name"),
+        timezone=user_info.get("timezone"),
+        language=user_info.get("language"),
+        locale=user_info.get("locale"),
+        user_type=user_info.get("user_type"),
+        api_urls=user_info.get("urls"),
+        org_name=user_info.get("organization_id"),  # Will be fetched on-demand for full name
     )
 
     # Set session cookie and redirect to frontend
@@ -131,6 +148,7 @@ async def get_status(session_id: str | None = Cookie(default=None)):
             display_name=session.display_name,
             email=session.email,
             org_id=session.org_id,
+            org_name=session.org_name,  # For header display
         ),
         instance_url=session.instance_url,
     )
@@ -197,3 +215,130 @@ async def refresh_token(session_id: str | None = Cookie(default=None)):
     )
 
     return {"message": "Token refreshed successfully"}
+
+
+@router.get("/session-info", response_model=SessionInfo)
+async def get_session_info(
+    session_id: str | None = Cookie(default=None),
+    api_version: str | None = None,
+):
+    """Get comprehensive session information for the Session Info popup.
+
+    This endpoint fetches additional data from Salesforce:
+    - Organization details (name, type, currency settings)
+    - User's profile information
+    - Person Accounts enabled status
+    """
+    if not session_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    session = session_store.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=401, detail="Session expired or invalid")
+
+    # Use provided API version or default
+    version = api_version or settings.SF_API_VERSION
+
+    # Create SalesforceService to run SOQL queries
+    sf_service = SalesforceService(
+        access_token=session.access_token,
+        instance_url=session.instance_url,
+        api_version=version,
+    )
+
+    # Fetch Organization info via SOQL
+    org_name = ""
+    org_type = None
+    is_sandbox = False
+    is_multi_currency = False
+    default_currency = None
+
+    try:
+        org_result = sf_service.sf.query(
+            "SELECT Id, Name, OrganizationType, DefaultCurrencyIsoCode, "
+            "IsSandbox, InstanceName FROM Organization LIMIT 1"
+        )
+        if org_result.get("records"):
+            org_record = org_result["records"][0]
+            org_name = org_record.get("Name", "")
+            org_type = org_record.get("OrganizationType")
+            is_sandbox = org_record.get("IsSandbox", False)
+            default_currency = org_record.get("DefaultCurrencyIsoCode")
+    except Exception:
+        # If SOQL fails, use fallback values
+        org_name = session.display_name  # Fallback to display name
+
+    # Check for Multi-Currency (separate query as it may not be available)
+    try:
+        # Try to query CurrencyType - if it exists, multi-currency is enabled
+        currency_result = sf_service.sf.query(
+            "SELECT Id FROM CurrencyType LIMIT 1"
+        )
+        is_multi_currency = True
+    except Exception:
+        is_multi_currency = False
+
+    # Fetch User's Profile info
+    profile_id = None
+    profile_name = None
+    try:
+        user_result = sf_service.sf.query(
+            f"SELECT ProfileId, Profile.Name FROM User WHERE Id = '{session.user_id}'"
+        )
+        if user_result.get("records"):
+            user_record = user_result["records"][0]
+            profile_id = user_record.get("ProfileId")
+            profile_info = user_record.get("Profile")
+            if profile_info:
+                profile_name = profile_info.get("Name")
+    except Exception:
+        pass
+
+    # Check for Person Accounts (see if Account.IsPersonAccount field exists)
+    person_accounts_enabled = False
+    try:
+        account_describe = sf_service.describe_object("Account")
+        person_accounts_enabled = any(
+            f.name == "IsPersonAccount" for f in account_describe.fields
+        )
+    except Exception:
+        pass
+
+    # Build REST/SOAP endpoint URLs from session api_urls
+    rest_endpoint = None
+    soap_endpoint = None
+    if session.api_urls:
+        rest_endpoint = session.api_urls.get("rest")
+        soap_endpoint = session.api_urls.get("enterprise")
+
+    return SessionInfo(
+        connection=SessionConnectionInfo(
+            api_version=version,
+            instance_url=session.instance_url,
+            rest_endpoint=rest_endpoint,
+            soap_endpoint=soap_endpoint,
+        ),
+        user=SessionUserInfo(
+            user_id=session.user_id,
+            username=session.username,
+            display_name=session.display_name,
+            email=session.email,
+            first_name=session.first_name,
+            last_name=session.last_name,
+            timezone=session.timezone,
+            language=session.language,
+            locale=session.locale,
+            user_type=session.user_type,
+        ),
+        organization=SessionOrgInfo(
+            org_id=session.org_id,
+            org_name=org_name,
+            org_type=org_type,
+            is_sandbox=is_sandbox,
+            is_multi_currency=is_multi_currency,
+            default_currency=default_currency,
+            person_accounts_enabled=person_accounts_enabled,
+        ),
+        profile_id=profile_id,
+        profile_name=profile_name,
+    )

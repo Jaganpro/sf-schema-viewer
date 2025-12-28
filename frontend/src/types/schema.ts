@@ -219,12 +219,55 @@ export interface UserInfo {
   display_name: string;
   email: string;
   org_id: string;
+  org_name?: string;  // For header display
 }
 
 export interface AuthStatus {
   is_authenticated: boolean;
   user?: UserInfo;
   instance_url?: string;
+}
+
+// ============================================================================
+// Session Info Types (for detailed session popup)
+// ============================================================================
+
+export interface SessionUserInfo {
+  user_id: string;
+  username: string;
+  display_name: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  timezone?: string;
+  language?: string;
+  locale?: string;
+  user_type?: string;
+}
+
+export interface SessionOrgInfo {
+  org_id: string;
+  org_name: string;
+  org_type?: string;  // Edition: Developer, Enterprise, etc.
+  is_sandbox: boolean;
+  is_multi_currency: boolean;
+  default_currency?: string;
+  person_accounts_enabled: boolean;
+}
+
+export interface SessionConnectionInfo {
+  api_version: string;
+  instance_url: string;
+  rest_endpoint?: string;
+  soap_endpoint?: string;
+}
+
+export interface SessionInfo {
+  connection: SessionConnectionInfo;
+  user: SessionUserInfo;
+  organization: SessionOrgInfo;
+  profile_id?: string;
+  profile_name?: string;
 }
 
 export interface BatchDescribeResponse {
