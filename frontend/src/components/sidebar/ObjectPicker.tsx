@@ -17,34 +17,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { OBJECT_TYPE_FILTERS, getObjectTypeInfo } from '@/lib/objectTypeFilters';
 import { useAppStore } from '../../store';
 import type { ObjectBasicInfo } from '../../types/schema';
-
-/**
- * Configuration for object type filters.
- * Each filter matches objects by their API name suffix pattern.
- */
-const OBJECT_TYPE_FILTERS = [
-  { key: 'feed', label: 'Feed Objects', badge: 'FEED', variant: 'feed', pattern: (n: string) => n.endsWith('Feed') },
-  { key: 'share', label: 'Share Objects', badge: 'SHARE', variant: 'share', pattern: (n: string) => n.endsWith('Share') },
-  { key: 'history', label: 'History Objects', badge: 'HIST', variant: 'history', pattern: (n: string) => n.endsWith('History') },
-  { key: 'changeEvent', label: 'Change Events', badge: 'CDC', variant: 'changeEvent', pattern: (n: string) => n.endsWith('ChangeEvent') },
-  { key: 'platformEvent', label: 'Platform Events', badge: 'EVT', variant: 'platformEvent', pattern: (n: string) => n.endsWith('__e') },
-  { key: 'externalObject', label: 'External Objects', badge: 'EXT', variant: 'externalObject', pattern: (n: string) => n.endsWith('__x') },
-  { key: 'customMetadata', label: 'Custom Metadata', badge: 'MDT', variant: 'customMetadata', pattern: (n: string) => n.endsWith('__mdt') },
-  { key: 'bigObject', label: 'Big Objects', badge: 'BIG', variant: 'bigObject', pattern: (n: string) => n.endsWith('__b') },
-  { key: 'tag', label: 'Tag Objects', badge: 'TAG', variant: 'tag', pattern: (n: string) => n.endsWith('Tag') },
-] as const;
-
-/** Get the object type info for an object based on its name pattern */
-function getObjectTypeInfo(objectName: string) {
-  for (const filter of OBJECT_TYPE_FILTERS) {
-    if (filter.pattern(objectName)) {
-      return { badge: filter.badge, variant: filter.variant };
-    }
-  }
-  return null;
-}
 
 interface ObjectItemProps {
   object: ObjectBasicInfo;

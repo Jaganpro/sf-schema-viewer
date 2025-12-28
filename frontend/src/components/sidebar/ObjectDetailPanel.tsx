@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn, getFieldTypeIcon } from '@/lib/utils';
+import { isFilteredByType } from '@/lib/objectTypeFilters';
 import { useAppStore } from '../../store';
 import type { FieldInfo, RelationshipInfo } from '../../types/schema';
 
@@ -74,6 +75,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     removeChildRelationship,
     clearChildRelationships,
     refreshEdges,
+    // Object type filters (for filtering child relationships)
+    objectTypeFilters,
   } = useAppStore();
   const [fieldSearch, setFieldSearch] = useState('');
   const [relSearch, setRelSearch] = useState('');
@@ -166,18 +169,37 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     );
   }, [objectDescribe?.fields, fieldSearch]);
 
-  // Filter child relationships based on search
-  const filteredRelationships = useMemo(() => {
-    if (!objectDescribe?.child_relationships) return [];
+  // Filter child relationships based on search AND object type filters
+  const { filteredRelationships, hiddenByFiltersCount } = useMemo(() => {
+    if (!objectDescribe?.child_relationships) {
+      return { filteredRelationships: [], hiddenByFiltersCount: 0 };
+    }
+
+    let filtered = objectDescribe.child_relationships;
+    let hiddenCount = 0;
+
+    // Apply object type filters (hide Feed, Share, History, etc. based on settings)
+    filtered = filtered.filter((rel) => {
+      if (isFilteredByType(rel.child_object, objectTypeFilters)) {
+        hiddenCount++;
+        return false;
+      }
+      return true;
+    });
+
+    // Apply search term filter
     const term = relSearch.toLowerCase();
-    if (!term) return objectDescribe.child_relationships;
-    return objectDescribe.child_relationships.filter(
-      (rel) =>
-        rel.child_object.toLowerCase().includes(term) ||
-        rel.field.toLowerCase().includes(term) ||
-        rel.relationship_name?.toLowerCase().includes(term)
-    );
-  }, [objectDescribe?.child_relationships, relSearch]);
+    if (term) {
+      filtered = filtered.filter(
+        (rel) =>
+          rel.child_object.toLowerCase().includes(term) ||
+          rel.field.toLowerCase().includes(term) ||
+          rel.relationship_name?.toLowerCase().includes(term)
+      );
+    }
+
+    return { filteredRelationships: filtered, hiddenByFiltersCount: hiddenCount };
+  }, [objectDescribe?.child_relationships, relSearch, objectTypeFilters]);
 
   // Helper to generate unique key for a relationship
   const getRelKey = (rel: RelationshipInfo) => `${rel.child_object}.${rel.field}`;
@@ -206,12 +228,12 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     }
   };
 
-  // Select all relationships - adds all child objects to diagram using batch API
+  // Select all relationships - adds all visible (non-filtered) child objects to diagram
   const selectAllRels = () => {
-    if (objectDescribe?.child_relationships) {
-      // Get unique child object names (some objects may appear in multiple relationships)
+    if (filteredRelationships.length > 0) {
+      // Get unique child object names from visible relationships only
       const childObjectNames = [
-        ...new Set(objectDescribe.child_relationships.map((rel) => rel.child_object))
+        ...new Set(filteredRelationships.map((rel) => rel.child_object))
       ];
 
       // Merge with currently selected objects to preserve existing selections
@@ -222,8 +244,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       // Single batch API call - no race conditions!
       selectObjects(allObjectNames);
 
-      // Add all relationships to store for edge filtering
-      objectDescribe.child_relationships.forEach((rel) => {
+      // Add all visible relationships to store for edge filtering
+      filteredRelationships.forEach((rel) => {
         addChildRelationship(objectName, getRelKey(rel));
       });
     }
@@ -370,7 +392,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
               Fields ({objectDescribe.fields.length})
             </TabsTrigger>
             <TabsTrigger value="relationships" className="text-xs">
-              Child Rels ({objectDescribe.child_relationships.length})
+              Child Rels ({filteredRelationships.length})
             </TabsTrigger>
           </TabsList>
 
@@ -486,10 +508,17 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
           {/* Child Relationships Tab */}
           <TabsContent value="relationships" className="flex-1 flex flex-col min-h-0 mt-0">
             <div className="px-4 py-3 border-b border-gray-100">
-              {/* Selected count */}
-              {selectedRels.size > 0 && (
-                <div className="text-xs text-sf-blue mb-2">{selectedRels.size} selected</div>
-              )}
+              {/* Selected count and hidden count */}
+              <div className="flex items-center gap-2 mb-2 text-xs">
+                {selectedRels.size > 0 && (
+                  <span className="text-sf-blue">{selectedRels.size} selected</span>
+                )}
+                {hiddenByFiltersCount > 0 && (
+                  <span className="text-sf-text-muted">
+                    ({hiddenByFiltersCount} hidden by filters)
+                  </span>
+                )}
+              </div>
               {/* Search input */}
               <div className="relative mb-2">
                 <Input
