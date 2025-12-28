@@ -97,6 +97,12 @@ class SalesforceService:
                     feed_enabled=obj.get("feedEnabled", False),
                     mergeable=obj.get("mergeable", False),
                     replicateable=obj.get("replicateable", False),
+                    # Object details (for Details tab)
+                    reportable=obj.get("reportable", False),
+                    activateable=obj.get("activateable", False),  # Track Activities
+                    has_subtypes=obj.get("hasSubtypes", False),  # Has Record Types
+                    description=obj.get("description"),
+                    deployment_status=obj.get("deploymentStatus"),
                 )
             )
 

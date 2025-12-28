@@ -387,12 +387,15 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       {/* Tabbed Content: Fields and Child Relationships */}
       {objectDescribe ? (
         <Tabs defaultValue="fields" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="mx-4 mt-3 mb-0 grid w-[calc(100%-2rem)] grid-cols-2">
+          <TabsList className="mx-4 mt-3 mb-0 grid w-[calc(100%-2rem)] grid-cols-3">
             <TabsTrigger value="fields" className="text-xs">
               Fields ({objectDescribe.fields.length})
             </TabsTrigger>
             <TabsTrigger value="relationships" className="text-xs">
-              Child Relationships ({filteredRelationships.length})
+              Child Rels ({filteredRelationships.length})
+            </TabsTrigger>
+            <TabsTrigger value="details" className="text-xs">
+              Details
             </TabsTrigger>
           </TabsList>
 
@@ -611,6 +614,81 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                     );
                   })
                 )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Details Tab */}
+          <TabsContent value="details" className="flex-1 flex flex-col min-h-0 mt-0">
+            <ScrollArea className="flex-1">
+              <div className="px-4 py-3 space-y-4">
+                {/* Description Section */}
+                {objectInfo.description && (
+                  <div>
+                    <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-1">
+                      Description
+                    </div>
+                    <p className="text-sm text-sf-text leading-relaxed">{objectInfo.description}</p>
+                  </div>
+                )}
+
+                {/* Properties Grid */}
+                <div>
+                  <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                    Properties
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
+                      <span className="text-sf-text-muted">API Name</span>
+                      <span className="font-mono text-sf-text">{objectInfo.name}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
+                      <span className="text-sf-text-muted">Key Prefix</span>
+                      <span className="font-mono text-sf-text">{objectInfo.key_prefix || '—'}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
+                      <span className="text-sf-text-muted">Plural Label</span>
+                      <span className="text-sf-text">{objectInfo.label_plural}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
+                      <span className="text-sf-text-muted">Deployment Status</span>
+                      <span className="text-sf-text">{objectInfo.deployment_status || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Settings Grid */}
+                <div>
+                  <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                    Settings
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
+                      <span className="text-sf-text-muted">Reportable</span>
+                      <span className={objectInfo.reportable ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {objectInfo.reportable ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
+                      <span className="text-sf-text-muted">Track Activities</span>
+                      <span className={objectInfo.activateable ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {objectInfo.activateable ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
+                      <span className="text-sf-text-muted">Record Types</span>
+                      <span className={objectInfo.has_subtypes ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {objectInfo.has_subtypes ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
+                      <span className="text-sf-text-muted">Custom Object</span>
+                      <span className={objectInfo.custom ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {objectInfo.custom ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>

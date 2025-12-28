@@ -46,6 +46,12 @@ export interface ObjectBasicInfo {
   feed_enabled: boolean;
   mergeable: boolean;
   replicateable: boolean;
+  // Object details (for Details tab)
+  reportable?: boolean;
+  activateable?: boolean;  // Track Activities
+  has_subtypes?: boolean;  // Has Record Types
+  description?: string;
+  deployment_status?: string;
 }
 
 export interface ObjectDescribe {

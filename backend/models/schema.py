@@ -52,6 +52,12 @@ class ObjectBasicInfo(BaseModel):
     feed_enabled: bool = False
     mergeable: bool = False
     replicateable: bool = False
+    # Object details (for Details tab)
+    reportable: bool = False
+    activateable: bool = False  # Track Activities
+    has_subtypes: bool = False  # Has Record Types
+    description: str | None = None
+    deployment_status: str | None = None
 
 
 class ObjectDescribe(BaseModel):
