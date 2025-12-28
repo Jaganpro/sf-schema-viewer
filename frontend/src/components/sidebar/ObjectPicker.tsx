@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { OBJECT_TYPE_FILTERS, getObjectTypeInfo } from '@/lib/objectTypeFilters';
 import { useAppStore } from '../../store';
 import { NewObjectsModal } from './NewObjectsModal';
+import { CloudPacksPanel } from './CloudPacksPanel';
 import type { ObjectBasicInfo } from '../../types/schema';
 
 interface ObjectItemProps {
@@ -186,6 +187,7 @@ export default function ObjectPicker() {
   const [localSearch, setLocalSearch] = useState(searchTerm);
   const [isResizing, setIsResizing] = useState(false);
   const [selectedReleaseStat, setSelectedReleaseStat] = useState<typeof releaseStats[0] | null>(null);
+  const [activeTab, setActiveTab] = useState<'objects' | 'packs'>('objects');
 
   // Get the selected version's release label for dynamic text
   const selectedVersionInfo = availableApiVersions.find(v => `v${v.version}` === apiVersion);
@@ -383,10 +385,42 @@ export default function ObjectPicker() {
         </Button>
       </div>
 
+      {/* Sub-tabs */}
+      {authStatus?.is_authenticated && (
+        <div className="flex border-b border-gray-200">
+          <button
+            className={cn(
+              'flex-1 py-2.5 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'objects'
+                ? 'border-sf-blue text-sf-blue'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            )}
+            onClick={() => setActiveTab('objects')}
+          >
+            All Objects
+          </button>
+          <button
+            className={cn(
+              'flex-1 py-2.5 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'packs'
+                ? 'border-sf-blue text-sf-blue'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            )}
+            onClick={() => setActiveTab('packs')}
+          >
+            Cloud Packs
+          </button>
+        </div>
+      )}
+
       {!authStatus?.is_authenticated ? (
         <div className="py-8 px-4 text-center text-sf-text-muted text-sm">
           <p>Please log in to view objects</p>
         </div>
+      ) : activeTab === 'packs' ? (
+        <ScrollArea className="flex-1">
+          <CloudPacksPanel />
+        </ScrollArea>
       ) : (
         <>
           {/* API Version Selector + Release Stats (2-column layout) */}

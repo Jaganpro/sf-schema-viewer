@@ -14,6 +14,7 @@ import type { ObjectNodeData } from '../components/flow/ObjectNode';
 import { api } from '../api/client';
 import { transformToFlowElements } from '../utils/transformers';
 import { applyDagreLayout } from '../utils/layout';
+import { CLOUD_PACKS } from '../data/cloudPacks';
 
 /**
  * Object type filter state - controls visibility of system object types.
@@ -164,6 +165,7 @@ interface AppState {
   setError: (error: string | null) => void;
   clearError: () => void;
   clearAllSelections: () => void;
+  addCloudPack: (packId: string) => Promise<{ added: number; total: number }>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -871,5 +873,86 @@ export const useAppStore = create<AppState>((set, get) => ({
       nodes: [],
       edges: [],
     });
+  },
+
+  // Add all objects from a Cloud Pack to the current selection
+  // Returns count of objects added vs total in pack (for UI feedback)
+  addCloudPack: async (packId: string) => {
+    const pack = CLOUD_PACKS.find(p => p.id === packId);
+    if (!pack) return { added: 0, total: 0 };
+
+    const { availableObjects, selectedObjectNames, describedObjects, apiVersion, nodes } = get();
+
+    // Filter to objects that exist in the org
+    const availableNames = new Set(availableObjects.map(o => o.name));
+    const packObjectsInOrg = pack.objects.filter(name => availableNames.has(name));
+
+    // Filter out already selected objects
+    const toAdd = packObjectsInOrg.filter(name => !selectedObjectNames.includes(name));
+
+    if (toAdd.length === 0) {
+      // All pack objects already selected or none available
+      return { added: 0, total: pack.objects.length };
+    }
+
+    // Describe objects that haven't been described yet
+    const toDescribe = toAdd.filter(name => !describedObjects.has(name));
+    if (toDescribe.length > 0) {
+      set({ isLoadingDescribe: true, error: null });
+      try {
+        const response = await api.schema.describeObjects(toDescribe, apiVersion ?? undefined);
+        const newDescribed = new Map(describedObjects);
+        for (const obj of response.objects) {
+          newDescribed.set(obj.name, obj);
+        }
+        set({ describedObjects: newDescribed });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to describe objects';
+        set({ isLoadingDescribe: false, error: message });
+        return { added: 0, total: pack.objects.length };
+      }
+      set({ isLoadingDescribe: false });
+    }
+
+    // Add to selection (union with existing)
+    const newSelectedObjects = [...selectedObjectNames, ...toAdd];
+    set({ selectedObjectNames: newSelectedObjects });
+
+    // Get updated describedObjects and transform to flow elements
+    const { describedObjects: updatedDescribed, selectedFieldsByObject, selectedChildRelsByParent } = get();
+    const describes = newSelectedObjects
+      .map(name => updatedDescribed.get(name))
+      .filter((d): d is ObjectDescribe => d !== undefined);
+
+    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(
+      describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent
+    );
+
+    // Preserve existing node positions, position new nodes to the right
+    const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
+    let maxX = 0;
+    let avgY = 0;
+    if (nodes.length > 0) {
+      nodes.forEach(n => {
+        maxX = Math.max(maxX, n.position.x + 300);
+        avgY += n.position.y;
+      });
+      avgY = avgY / nodes.length;
+    }
+
+    // Stack new nodes vertically, offset each slightly
+    let yOffset = 0;
+    const mergedNodes = newNodes.map(node => {
+      if (existingPositions.has(node.id)) {
+        return { ...node, position: existingPositions.get(node.id)! };
+      }
+      const position = { x: maxX, y: avgY + yOffset };
+      yOffset += 150; // Stack new nodes vertically
+      return { ...node, position };
+    });
+
+    set({ nodes: mergedNodes, edges: newEdges });
+
+    return { added: toAdd.length, total: pack.objects.length };
   },
 }));
