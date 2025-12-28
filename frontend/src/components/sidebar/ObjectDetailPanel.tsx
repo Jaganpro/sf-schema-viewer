@@ -622,13 +622,13 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
           <TabsContent value="details" className="flex-1 flex flex-col min-h-0 mt-0">
             <ScrollArea className="flex-1">
               <div className="px-4 py-3 space-y-4">
-                {/* Description Section */}
-                {objectInfo.description && (
+                {/* Description Section - from Object Describe for accuracy */}
+                {objectDescribe.description && (
                   <div>
                     <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-1">
                       Description
                     </div>
-                    <p className="text-sm text-sf-text leading-relaxed">{objectInfo.description}</p>
+                    <p className="text-sm text-sf-text leading-relaxed">{objectDescribe.description}</p>
                   </div>
                 )}
 
@@ -652,12 +652,12 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                     </div>
                     <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
                       <span className="text-sf-text-muted">Deployment Status</span>
-                      <span className="text-sf-text">{objectInfo.deployment_status || '—'}</span>
+                      <span className="text-sf-text">{objectDescribe.deployment_status || '—'}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Settings Grid */}
+                {/* Settings Grid - use objectDescribe for accurate data */}
                 <div>
                   <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
                     Settings
@@ -665,20 +665,22 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                   <div className="grid grid-cols-2 gap-1.5">
                     <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
                       <span className="text-sf-text-muted">Reportable</span>
-                      <span className={objectInfo.reportable ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {objectInfo.reportable ? 'Yes' : 'No'}
+                      <span className={objectDescribe.reportable ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {objectDescribe.reportable ? 'Yes' : 'No'}
                       </span>
                     </div>
                     <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
-                      <span className="text-sf-text-muted">Track Activities</span>
-                      <span className={objectInfo.activateable ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {objectInfo.activateable ? 'Yes' : 'No'}
+                      <span className="text-sf-text-muted">Allow Activities</span>
+                      <span className={objectDescribe.activateable ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {objectDescribe.activateable ? 'Yes' : 'No'}
                       </span>
                     </div>
                     <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">
                       <span className="text-sf-text-muted">Record Types</span>
-                      <span className={objectInfo.has_subtypes ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {objectInfo.has_subtypes ? 'Yes' : 'No'}
+                      <span className={objectDescribe.record_type_infos && objectDescribe.record_type_infos.length > 1 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {objectDescribe.record_type_infos && objectDescribe.record_type_infos.length > 1
+                          ? `Yes (${objectDescribe.record_type_infos.length})`
+                          : 'No'}
                       </span>
                     </div>
                     <div className="flex justify-between py-1.5 px-2.5 bg-gray-50 rounded text-xs">

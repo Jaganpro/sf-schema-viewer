@@ -71,6 +71,11 @@ class ObjectDescribe(BaseModel):
     fields: list[FieldInfo]
     child_relationships: list[RelationshipInfo]
     record_type_infos: list[dict] | None = None
+    # Additional metadata from Object Describe
+    reportable: bool = False
+    activateable: bool = False  # Allow Activities
+    description: str | None = None
+    deployment_status: str | None = None
 
 
 class BatchDescribeRequest(BaseModel):

@@ -63,6 +63,11 @@ export interface ObjectDescribe {
   fields: FieldInfo[];
   child_relationships: RelationshipInfo[];
   record_type_infos?: Record<string, unknown>[];
+  // Additional metadata from Object Describe
+  reportable?: boolean;
+  activateable?: boolean;  // Allow Activities
+  description?: string;
+  deployment_status?: string;
 }
 
 export interface UserInfo {

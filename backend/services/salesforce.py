@@ -183,6 +183,11 @@ class SalesforceService:
             fields=fields,
             child_relationships=child_relationships,
             record_type_infos=describe.get("recordTypeInfos"),
+            # Additional metadata from Object Describe
+            reportable=describe.get("reportable", False),
+            activateable=describe.get("activateable", False),
+            description=describe.get("description"),
+            deployment_status=describe.get("deploymentStatus"),
         )
 
     def describe_objects(
