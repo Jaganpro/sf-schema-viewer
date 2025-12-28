@@ -40,6 +40,11 @@ export function CloudPacksPanel() {
 
   return (
     <div className="p-4 space-y-3">
+      {/* Section title */}
+      <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
+        Quick Select
+      </div>
+
       {/* Pack cards */}
       {packAvailability.map(({ pack, availableCount }) => (
         <CloudPackCard

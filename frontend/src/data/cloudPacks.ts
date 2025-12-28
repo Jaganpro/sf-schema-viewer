@@ -7,7 +7,6 @@
 export interface CloudPack {
   id: string;
   name: string;
-  icon: string;
   description: string;
   objects: string[]; // Salesforce API names
 }
@@ -20,7 +19,6 @@ export const CLOUD_PACKS: CloudPack[] = [
   {
     id: 'sales-cloud',
     name: 'Sales Cloud',
-    icon: '☁️',
     description: 'Core sales objects for pipeline and revenue management',
     objects: [
       'Account',
@@ -49,7 +47,6 @@ export const CLOUD_PACKS: CloudPack[] = [
   {
     id: 'service-cloud',
     name: 'Service Cloud',
-    icon: '🎧',
     description: 'Customer service and support objects',
     objects: [
       'Case',
@@ -78,7 +75,6 @@ export const CLOUD_PACKS: CloudPack[] = [
   {
     id: 'health-cloud',
     name: 'Health Cloud',
-    icon: '🏥',
     description: 'Healthcare and life sciences objects',
     objects: [
       'Account',

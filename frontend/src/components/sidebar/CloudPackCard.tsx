@@ -39,22 +39,19 @@ export function CloudPackCard({ pack, availableCount, onAdd }: CloudPackCardProp
   return (
     <div
       className={cn(
-        'border rounded-lg p-4 transition-all',
+        'border rounded-lg p-4 transition-all border-l-[3px]',
         isDisabled
-          ? 'border-gray-100 bg-gray-50/50 opacity-60'
-          : 'border-gray-200 hover:border-sf-blue/50 hover:shadow-sm'
+          ? 'border-gray-100 border-l-gray-300 bg-gray-50/50 opacity-60'
+          : 'border-gray-200 border-l-sf-blue hover:border-sf-blue/50 hover:border-l-sf-blue hover:shadow-sm'
       )}
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="text-xl flex-shrink-0">{pack.icon}</span>
-          <div className="min-w-0">
-            <h4 className="font-medium text-sm text-sf-text truncate">{pack.name}</h4>
-            <p className="text-xs text-gray-500">
-              {availableCount} of {pack.objects.length} available
-            </p>
-          </div>
+        <div className="min-w-0">
+          <h4 className="font-medium text-sm text-sf-text truncate">{pack.name}</h4>
+          <p className="text-xs text-gray-500">
+            {availableCount} of {pack.objects.length} available
+          </p>
         </div>
 
         {/* Add button with states */}

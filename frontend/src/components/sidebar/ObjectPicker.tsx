@@ -178,7 +178,6 @@ export default function ObjectPicker() {
     setApiVersion,
     // New objects detection
     newObjectNames,
-    isLoadingNewObjects,
     releaseStats,
     showOnlyNew,
     setShowOnlyNew,
@@ -187,6 +186,7 @@ export default function ObjectPicker() {
   const [localSearch, setLocalSearch] = useState(searchTerm);
   const [isResizing, setIsResizing] = useState(false);
   const [selectedReleaseStat, setSelectedReleaseStat] = useState<typeof releaseStats[0] | null>(null);
+  const [showReleaseSummary, setShowReleaseSummary] = useState(false);
   const [activeTab, setActiveTab] = useState<'objects' | 'packs'>('objects');
 
   // Get the selected version's release label for dynamic text
@@ -343,16 +343,12 @@ export default function ObjectPicker() {
 
   if (!sidebarOpen) {
     return (
-      <div className="w-10 h-full bg-white border-r border-sf-border flex flex-col items-center pt-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={toggleSidebar}
-          title="Open sidebar"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+      <div
+        className="w-4 h-full bg-gray-50 border-r border-sf-border flex items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors"
+        onClick={toggleSidebar}
+        title="Open sidebar"
+      >
+        <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
       </div>
     );
   }
@@ -371,18 +367,46 @@ export default function ObjectPicker() {
         onMouseDown={handleResizeStart}
         title="Drag to resize"
       />
-      {/* Header */}
-      <div className="px-4 py-4 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="text-base font-semibold text-sf-text">Objects</h2>
+      {/* Compact header: collapse button + version picker + sparkle icon */}
+      <div className="h-9 px-2 border-b border-gray-200 flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-7 w-7 flex-shrink-0"
           onClick={toggleSidebar}
           title="Close sidebar"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
+        {authStatus?.is_authenticated && availableApiVersions.length > 0 && apiVersion && (
+          <>
+            <Select
+              value={apiVersion}
+              onValueChange={setApiVersion}
+              disabled={isLoadingApiVersions}
+            >
+              <SelectTrigger className="flex-1 h-7 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                {availableApiVersions.map((v) => (
+                  <SelectItem key={v.version} value={`v${v.version}`}>
+                    v{v.version} ({v.label})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 flex-shrink-0"
+              onClick={() => setShowReleaseSummary(true)}
+              title="New objects by release"
+            >
+              <Sparkles className="h-4 w-4 text-amber-500" />
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Sub-tabs */}
@@ -423,92 +447,6 @@ export default function ObjectPicker() {
         </ScrollArea>
       ) : (
         <>
-          {/* API Version Selector + Release Stats (2-column layout) */}
-          {availableApiVersions.length > 0 && apiVersion && (
-            <div className="px-4 py-3 border-b border-gray-200">
-              <div className="grid grid-cols-2 gap-3">
-                {/* Left column: Version picker + Show only new checkbox */}
-                <div className="flex flex-col gap-2">
-                  <Select
-                    value={apiVersion}
-                    onValueChange={setApiVersion}
-                    disabled={isLoadingApiVersions}
-                  >
-                    <SelectTrigger className="w-full h-9 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64">
-                      {availableApiVersions.map((v) => (
-                        <SelectItem key={v.version} value={`v${v.version}`}>
-                          v{v.version} ({v.label})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Show only new objects - positioned near New Objects stats card */}
-                  {newObjectNames.size > 0 && (
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="show-only-new"
-                          checked={showOnlyNew}
-                          onCheckedChange={(checked) => setShowOnlyNew(checked === true)}
-                          className="h-4 w-4"
-                        />
-                        <label
-                          htmlFor="show-only-new"
-                          className="text-xs text-sf-text-muted cursor-pointer flex items-center gap-1"
-                        >
-                          <Sparkles className="h-3 w-3 text-amber-500" />
-                          New in {selectedReleaseLabel}
-                        </label>
-                      </div>
-                      {/* Show hidden count when filter is active and some objects are hidden */}
-                      {showOnlyNew && newObjectsStats && newObjectsStats.hiddenNew > 0 && (
-                        <div className="text-[10px] text-amber-600 ml-6">
-                          {newObjectsStats.visibleNew} of {newObjectsStats.totalNew} shown
-                          <span className="text-gray-400"> ({newObjectsStats.hiddenNew} hidden by filters)</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Right column: Release stats */}
-                <div className="bg-amber-50/50 rounded-md p-2 border border-amber-100">
-                  <div className="text-xs font-medium text-amber-700 flex items-center gap-1 mb-1">
-                    <Sparkles className="h-3 w-3" />
-                    New Objects by Release
-                  </div>
-                  {isLoadingNewObjects ? (
-                    <div className="text-xs text-sf-text-muted animate-pulse">
-                      Loading...
-                    </div>
-                  ) : releaseStats.length > 0 ? (
-                    <div className="space-y-0.5">
-                      {releaseStats.map((stat) => (
-                        <div
-                          key={stat.version}
-                          className="flex justify-between text-xs cursor-pointer hover:bg-amber-100/50 rounded px-1 -mx-1 py-0.5"
-                          onClick={() => setSelectedReleaseStat(stat)}
-                          title={`Click to see ${stat.newCount} new objects`}
-                        >
-                          <span className="text-gray-600">{stat.label}</span>
-                          <span className="font-medium text-amber-600">+{stat.newCount}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-sf-text-muted">
-                      No data
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Search */}
           <div className="px-4 py-3 relative">
             <Input
@@ -530,6 +468,9 @@ export default function ObjectPicker() {
 
           {/* Classification Filter Chips */}
           <div className="px-4 py-3 border-b border-gray-100">
+            <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-2">
+              Filters
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-600 font-medium">Show:</span>
               <div className="flex flex-wrap gap-1.5">
@@ -553,6 +494,34 @@ export default function ObjectPicker() {
               />
               </div>
             </div>
+
+            {/* Show only new objects checkbox */}
+            {newObjectNames.size > 0 && (
+              <div className="flex flex-col gap-1 mt-2.5">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="show-only-new"
+                    checked={showOnlyNew}
+                    onCheckedChange={(checked) => setShowOnlyNew(checked === true)}
+                    className="h-4 w-4"
+                  />
+                  <label
+                    htmlFor="show-only-new"
+                    className="text-xs text-sf-text-muted cursor-pointer flex items-center gap-1"
+                  >
+                    <Sparkles className="h-3 w-3 text-amber-500" />
+                    Show only new in {selectedReleaseLabel}
+                  </label>
+                </div>
+                {/* Show hidden count when filter is active and some objects are hidden */}
+                {showOnlyNew && newObjectsStats && newObjectsStats.hiddenNew > 0 && (
+                  <div className="text-[10px] text-amber-600 ml-6">
+                    {newObjectsStats.visibleNew} of {newObjectsStats.totalNew} shown
+                    <span className="text-gray-400"> ({newObjectsStats.hiddenNew} hidden by filters)</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Namespace sub-filter (when Packaged is active) */}
             {classificationFilters.packaged && uniqueNamespaces.length > 0 && (
@@ -714,11 +683,15 @@ export default function ObjectPicker() {
 
       {/* New Objects Modal */}
       <NewObjectsModal
-        releaseStat={selectedReleaseStat}
+        isOpen={showReleaseSummary || selectedReleaseStat !== null}
+        releaseStats={releaseStats}
+        initialReleaseStat={selectedReleaseStat}
         availableObjects={availableObjects}
-        onClose={() => setSelectedReleaseStat(null)}
-        onObjectClick={(name) => {
+        onClose={() => {
+          setShowReleaseSummary(false);
           setSelectedReleaseStat(null);
+        }}
+        onObjectClick={(name) => {
           setFocusedObject(name);
         }}
       />
