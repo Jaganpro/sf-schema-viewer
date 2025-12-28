@@ -278,16 +278,17 @@ async def get_session_info(
     default_currency = None
 
     try:
+        # Note: DefaultCurrencyIsoCode only exists when Multi-Currency is enabled
+        # Query base org fields that always exist
         org_result = sf_service.sf.query(
-            "SELECT Id, Name, OrganizationType, DefaultCurrencyIsoCode, "
-            "IsSandbox, InstanceName FROM Organization LIMIT 1"
+            "SELECT Id, Name, OrganizationType, IsSandbox, InstanceName "
+            "FROM Organization LIMIT 1"
         )
         if org_result.get("records"):
             org_record = org_result["records"][0]
             org_name = org_record.get("Name", "")
             org_type = org_record.get("OrganizationType")
             is_sandbox = org_record.get("IsSandbox", False)
-            default_currency = org_record.get("DefaultCurrencyIsoCode")
             instance_name = org_record.get("InstanceName")  # e.g., "NA124"
             # Cache org info in session for header display
             session_store.update_org_info(
@@ -300,13 +301,22 @@ async def get_session_info(
         # If SOQL fails, use fallback values
         org_name = session.display_name  # Fallback to display name
 
-    # Check for Multi-Currency (separate query as it may not be available)
+    # Check for Multi-Currency and get default currency (field only exists when enabled)
     try:
         # Try to query CurrencyType - if it exists, multi-currency is enabled
         currency_result = sf_service.sf.query(
             "SELECT Id FROM CurrencyType LIMIT 1"
         )
         is_multi_currency = True
+        # Now query DefaultCurrencyIsoCode (only exists when multi-currency is enabled)
+        try:
+            currency_org = sf_service.sf.query(
+                "SELECT DefaultCurrencyIsoCode FROM Organization LIMIT 1"
+            )
+            if currency_org.get("records"):
+                default_currency = currency_org["records"][0].get("DefaultCurrencyIsoCode")
+        except Exception:
+            pass
     except Exception:
         is_multi_currency = False
 
