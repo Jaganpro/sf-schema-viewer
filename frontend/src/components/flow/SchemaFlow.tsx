@@ -152,7 +152,16 @@ export default function SchemaFlow() {
 
   const handleReLayout = useCallback(() => {
     applyLayout();
-  }, [applyLayout]);
+    // Force update nodes with new dagre positions (bypass position preservation in useEffect)
+    const newNodes = useAppStore.getState().nodes;
+    setNodes(newNodes.map(node => ({
+      ...node,
+      data: {
+        ...(node.data as ObjectNodeData),
+        compactMode,
+      },
+    })));
+  }, [applyLayout, setNodes, compactMode]);
 
   return (
     <div className="w-full h-full relative bg-sf-background">
@@ -270,7 +279,12 @@ export default function SchemaFlow() {
                     <span>Lookup Relationship</span>
                   </div>
                   <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <span className="w-6 h-0.5 bg-sf-purple flex-shrink-0" />
+                    <span
+                      className="w-6 h-0.5 flex-shrink-0"
+                      style={{
+                        background: 'repeating-linear-gradient(90deg, #DC2626 0px, #DC2626 4px, transparent 4px, transparent 8px)',
+                      }}
+                    />
                     <span>Master-Detail Relationship</span>
                   </div>
                 </div>

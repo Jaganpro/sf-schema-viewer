@@ -18,8 +18,8 @@ const DEFAULT_OPTIONS: LayoutOptions = {
   direction: 'LR', // Left to right (horizontal)
   nodeWidth: 280,
   nodeHeight: 300,
-  nodeSpacing: 50,
-  rankSpacing: 100,
+  nodeSpacing: 100,  // Space between nodes in same rank (was 50)
+  rankSpacing: 200,  // Space between ranks/levels (was 100)
 };
 
 /**
@@ -39,6 +39,7 @@ export function applyDagreLayout(
     rankdir: opts.direction,
     nodesep: opts.nodeSpacing,
     ranksep: opts.rankSpacing,
+    ranker: 'network-simplex',  // Optimizes for fewer edge crossings
     marginx: 20,
     marginy: 20,
   });

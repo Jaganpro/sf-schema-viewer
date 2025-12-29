@@ -135,8 +135,8 @@
   }
 
   .relationship-edge.master-detail {
-    stroke: #9050E9;
-    stroke-dasharray: none;
+    stroke: #DC2626;
+    stroke-dasharray: 6 3;
   }
 
   .relationship-edge.selected {
@@ -156,15 +156,15 @@
   }
 
   .edge-label.lookup {
-    background: #E8F4FF;
-    color: #0176D3;
-    border: 1px solid #0176D3;
+    background: #F3F4F6;
+    color: #6B7280;
+    border: 1px solid #9CA3AF;
   }
 
   .edge-label.master-detail {
-    background: #F3E8FF;
-    color: #9050E9;
-    border: 1px solid #9050E9;
+    background: #FEE2E2;
+    color: #DC2626;
+    border: 1px solid #DC2626;
   }
 
   .edge-label.selected {

@@ -39,7 +39,7 @@ function SmartEdge({
   data,
   selected,
 }: SmartEdgeProps) {
-  const { getNode } = useReactFlow();
+  const { getNode, getEdges } = useReactFlow();
 
   // Get actual node data for position calculations
   const sourceNode = getNode(source);
@@ -48,6 +48,27 @@ function SmartEdge({
   // Extract edge grouping info for offset calculation
   const edgeIndex = data?.edgeIndex ?? 0;
   const totalEdges = data?.totalEdges ?? 1;
+
+  // Helper to determine which side of target an edge connects to
+  const getTargetSide = (srcNode: typeof sourceNode, tgtNode: typeof targetNode): Position => {
+    if (!srcNode || !tgtNode || !srcNode.measured?.width || !tgtNode.measured?.width) {
+      return Position.Left;
+    }
+    const srcCenterX = srcNode.position.x + srcNode.measured.width / 2;
+    const srcCenterY = srcNode.position.y + srcNode.measured.height! / 2;
+    const tgtCenterX = tgtNode.position.x + tgtNode.measured.width / 2;
+    const tgtCenterY = tgtNode.position.y + tgtNode.measured.height! / 2;
+
+    const dx = tgtCenterX - srcCenterX;
+    const dy = tgtCenterY - srcCenterY;
+    const horizontalDominant = Math.abs(dx) > Math.abs(dy) * 0.5;
+
+    if (horizontalDominant) {
+      return dx > 0 ? Position.Left : Position.Right;
+    } else {
+      return dy > 0 ? Position.Top : Position.Bottom;
+    }
+  };
 
   // Memoize expensive position calculations
   // Only recalculates when node positions or dimensions change
@@ -126,25 +147,60 @@ function SmartEdge({
       }
     }
 
-    // Calculate perpendicular offset for multiple edges between same nodes
-    // This creates a fan effect where edges spread apart visually
+    // Calculate perpendicular offset for multiple edges between same nodes (same source-target pair)
     const EDGE_SPACING = 25; // pixels between edges
     const offsetAmount = totalEdges > 1
       ? (edgeIndex - (totalEdges - 1) / 2) * EDGE_SPACING
       : 0;
 
     // Apply offset perpendicular to edge direction
-    // Horizontal edges: offset in Y direction
-    // Vertical edges: offset in X direction
     if (horizontalDominant) {
       sourceY += offsetAmount;
-      targetY += offsetAmount;
     } else {
       sourceX += offsetAmount;
-      targetX += offsetAmount;
     }
 
-    const [edgePath, labelX, labelY] = getBezierPath({
+    // ========================================
+    // DISTRIBUTE TARGET CONNECTION POINTS
+    // Group all edges by target node + side, then spread them along the edge
+    // ========================================
+    const allEdges = getEdges();
+
+    // Find all edges connecting to the same side of this target node
+    const edgesToSameSide = allEdges.filter(e => {
+      if (e.target !== target) return false;
+      const edgeSourceNode = getNode(e.source);
+      const edgeTargetNode = getNode(e.target);
+      const side = getTargetSide(edgeSourceNode, edgeTargetNode);
+      return side === targetPos;
+    });
+
+    // Sort edges consistently (by source name, then field name) for stable indexing
+    edgesToSameSide.sort((a, b) => {
+      if (a.source !== b.source) return a.source.localeCompare(b.source);
+      const aField = (a.data as SmartEdgeData)?.fieldName ?? '';
+      const bField = (b.data as SmartEdgeData)?.fieldName ?? '';
+      return aField.localeCompare(bField);
+    });
+
+    // Find this edge's index among edges to the same target side
+    const targetSideIndex = edgesToSameSide.findIndex(e => e.id === id);
+    const targetSideTotal = edgesToSameSide.length;
+
+    // Distribute target connection points along the node edge
+    if (targetSideTotal > 1 && targetSideIndex >= 0) {
+      if (targetPos === Position.Left || targetPos === Position.Right) {
+        // Vertical distribution along left/right sides
+        const spacing = targetHeight / (targetSideTotal + 1);
+        targetY = targetNode.position.y + spacing * (targetSideIndex + 1);
+      } else {
+        // Horizontal distribution along top/bottom sides
+        const spacing = targetWidth / (targetSideTotal + 1);
+        targetX = targetNode.position.x + spacing * (targetSideIndex + 1);
+      }
+    }
+
+    const [edgePath, rawLabelX, rawLabelY] = getBezierPath({
       sourceX,
       sourceY,
       sourcePosition: sourcePos,
@@ -152,6 +208,11 @@ function SmartEdge({
       targetY,
       targetPosition: targetPos,
     });
+
+    // Apply same perpendicular offset to labels so they fan out with their edges
+    // This prevents label overlap when multiple edges connect the same nodes
+    const labelX = horizontalDominant ? rawLabelX : rawLabelX + offsetAmount;
+    const labelY = horizontalDominant ? rawLabelY + offsetAmount : rawLabelY;
 
     // Calculate cardinality label positions (offset from connection points)
     const cardinalityOffset = 25;
@@ -191,6 +252,12 @@ function SmartEdge({
     targetNode?.measured?.height,
     edgeIndex,
     totalEdges,
+    // For target-side distribution
+    id,
+    target,
+    getEdges,
+    getNode,
+    getTargetSide,
     // Force recalculation when _refresh changes (after node measurements complete)
     // This works around React Flow mutating node.measured in place without triggering re-renders
     (data as Record<string, unknown>)?._refresh,
@@ -206,6 +273,9 @@ function SmartEdge({
   const sourceCard = data?.sourceCardinality || 'N';
   const targetCard = data?.targetCardinality || '1';
 
+  // Hide cardinality labels for self-referential relationships (e.g., Account → Account)
+  const isSelfReference = data?.sourceObject === data?.targetObject;
+
   return (
     <>
       {/* Main edge path */}
@@ -218,25 +288,30 @@ function SmartEdge({
 
       {/* Edge labels */}
       <EdgeLabelRenderer>
-        {/* Source cardinality */}
-        <div
-          className="cardinality-label source"
-          style={{
-            transform: `translate(-50%, -50%) translate(${sourceCardX}px, ${sourceCardY}px)`,
-          }}
-        >
-          {sourceCard}
-        </div>
+        {/* Cardinality labels - hidden for self-references */}
+        {!isSelfReference && (
+          <>
+            {/* Source cardinality */}
+            <div
+              className="cardinality-label source"
+              style={{
+                transform: `translate(-50%, -50%) translate(${sourceCardX}px, ${sourceCardY}px)`,
+              }}
+            >
+              {sourceCard}
+            </div>
 
-        {/* Target cardinality */}
-        <div
-          className="cardinality-label target"
-          style={{
-            transform: `translate(-50%, -50%) translate(${targetCardX}px, ${targetCardY}px)`,
-          }}
-        >
-          {targetCard}
-        </div>
+            {/* Target cardinality */}
+            <div
+              className="cardinality-label target"
+              style={{
+                transform: `translate(-50%, -50%) translate(${targetCardX}px, ${targetCardY}px)`,
+              }}
+            >
+              {targetCard}
+            </div>
+          </>
+        )}
 
         {/* Field name label */}
         <div
@@ -276,7 +351,7 @@ export function EdgeMarkerDefs() {
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#9050e9" />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#DC2626" />
         </marker>
 
         {/* Hollow arrow for lookup relationships */}
@@ -289,7 +364,7 @@ export function EdgeMarkerDefs() {
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="none" stroke="#0070d2" strokeWidth="1.5" />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="none" stroke="#0176D3" strokeWidth="1.5" />
         </marker>
       </defs>
     </svg>

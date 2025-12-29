@@ -66,6 +66,11 @@ export function transformToFlowElements(
           continue;
         }
 
+        // Skip self-referential edges (e.g., Account → Account via ParentAccountId)
+        if (describe.name === targetObject) {
+          continue;
+        }
+
         // Check if this edge should be filtered by child relationship selection
         // Relationship key format: "SourceObject.FieldName" (e.g., "Asset.AssetProvidedById")
         const relationshipKey = `${describe.name}.${field.name}`;
@@ -102,6 +107,47 @@ export function transformToFlowElements(
       }
     }
   }
+
+  // Deduplicate edges: show only 1 edge per source→target pair by default
+  // Priority: Master-Detail > Lookup, then alphabetically by fieldName
+  // This reduces clutter; users can add more edges via Relationships tab
+  const edgesByPair = new Map<string, Edge<RelationshipEdgeData>[]>();
+  for (const edge of edges) {
+    const pairKey = `${edge.source}→${edge.target}`;
+    if (!edgesByPair.has(pairKey)) {
+      edgesByPair.set(pairKey, []);
+    }
+    edgesByPair.get(pairKey)!.push(edge);
+  }
+
+  // For each pair, keep only the primary edge (unless user explicitly selected via child rels)
+  const dedupedEdges: Edge<RelationshipEdgeData>[] = [];
+  for (const [pairKey, pairEdges] of edgesByPair) {
+    const target = pairKey.split('→')[1];
+
+    // Check if this target has explicit child relationship selections
+    const targetChildRels = selectedChildRelsByParent?.get(target);
+    const hasExplicitSelection = targetChildRels && targetChildRels.size > 0;
+
+    if (hasExplicitSelection) {
+      // User explicitly selected relationships - keep all that match
+      dedupedEdges.push(...pairEdges);
+    } else {
+      // No explicit selection - keep only the primary edge
+      // Sort: Master-Detail first (0), then Lookup (1), then alphabetically
+      pairEdges.sort((a, b) => {
+        const aIsMD = a.data?.relationshipType === 'master-detail' ? 0 : 1;
+        const bIsMD = b.data?.relationshipType === 'master-detail' ? 0 : 1;
+        if (aIsMD !== bIsMD) return aIsMD - bIsMD;
+        return (a.data?.fieldName ?? '').localeCompare(b.data?.fieldName ?? '');
+      });
+      dedupedEdges.push(pairEdges[0]); // Keep only the first (primary)
+    }
+  }
+
+  // Replace edges with deduped version
+  edges.length = 0;
+  edges.push(...dedupedEdges);
 
   // Group edges by source-target pair to add index info for offset calculation
   // This allows multiple edges between the same nodes to fan out visually
