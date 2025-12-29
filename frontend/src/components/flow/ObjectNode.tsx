@@ -3,8 +3,8 @@
  * Pill-style: light background, dark border & text, uppercase label.
  */
 
-import { memo } from 'react';
-import { Handle, Position, type Node, NodeResizer } from '@xyflow/react';
+import { memo, useMemo } from 'react';
+import { Handle, Position, type Node, NodeResizer, useReactFlow } from '@xyflow/react';
 import { CircleDot } from 'lucide-react';
 import type { FieldInfo } from '../../types/schema';
 import { cn } from '@/lib/utils';
@@ -28,9 +28,64 @@ export type ObjectNodeType = Node<ObjectNodeData, 'objectNode'>;
 interface ObjectNodeProps {
   data: ObjectNodeData;
   selected?: boolean;
+  id: string; // React Flow passes this automatically
 }
 
-function ObjectNode({ data, selected }: ObjectNodeProps) {
+function ObjectNode({ data, selected, id }: ObjectNodeProps) {
+  const { getEdges, getNode } = useReactFlow();
+
+  // Calculate edges per side for dynamic height
+  const edgeCounts = useMemo(() => {
+    const edges = getEdges();
+    const counts = { left: 0, right: 0, top: 0, bottom: 0 };
+
+    // Helper to determine which side of this node an edge connects to
+    const getSide = (otherNodeId: string): 'left' | 'right' | 'top' | 'bottom' => {
+      const thisNode = getNode(id);
+      const otherNode = getNode(otherNodeId);
+
+      if (!thisNode || !otherNode || !thisNode.measured?.width || !otherNode.measured?.width) {
+        return 'left';
+      }
+
+      const thisCenterX = thisNode.position.x + thisNode.measured.width / 2;
+      const thisCenterY = thisNode.position.y + thisNode.measured.height! / 2;
+      const otherCenterX = otherNode.position.x + otherNode.measured.width / 2;
+      const otherCenterY = otherNode.position.y + otherNode.measured.height! / 2;
+
+      const dx = otherCenterX - thisCenterX;
+      const dy = otherCenterY - thisCenterY;
+      const horizontalDominant = Math.abs(dx) > Math.abs(dy) * 0.5;
+
+      if (horizontalDominant) {
+        return dx > 0 ? 'right' : 'left';
+      } else {
+        return dy > 0 ? 'bottom' : 'top';
+      }
+    };
+
+    for (const edge of edges) {
+      if (edge.target === id) {
+        // Incoming edge - which side does it connect to?
+        const side = getSide(edge.source);
+        counts[side]++;
+      }
+      if (edge.source === id) {
+        // Outgoing edge - which side does it leave from?
+        const side = getSide(edge.target);
+        counts[side]++;
+      }
+    }
+
+    return counts;
+  }, [getEdges, getNode, id]);
+
+  // Calculate minimum height based on max edges on left/right sides
+  const maxVerticalEdges = Math.max(edgeCounts.left, edgeCounts.right);
+  const EDGE_SPACING = 30; // pixels per edge (slightly more than the 25px in SmartEdge)
+  const BASE_HEIGHT = 72; // default minimum
+  const dynamicMinHeight = Math.max(BASE_HEIGHT, (maxVerticalEdges + 1) * EDGE_SPACING);
+
   // Pill-style colors: light background, dark border & text
   const pillColors = data.isCustom
     ? {
@@ -61,6 +116,7 @@ function ObjectNode({ data, selected }: ObjectNodeProps) {
           : 'shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)]',
         'group'
       )}
+      style={{ minHeight: dynamicMinHeight }}
     >
       {/* Resize handles - only visible when selected */}
       <NodeResizer

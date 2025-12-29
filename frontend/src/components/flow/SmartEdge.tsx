@@ -45,10 +45,6 @@ function SmartEdge({
   const sourceNode = getNode(source);
   const targetNode = getNode(target);
 
-  // Extract edge grouping info for offset calculation
-  const edgeIndex = data?.edgeIndex ?? 0;
-  const totalEdges = data?.totalEdges ?? 1;
-
   // Helper to determine which side of target an edge connects to
   const getTargetSide = (srcNode: typeof sourceNode, tgtNode: typeof targetNode): Position => {
     if (!srcNode || !tgtNode || !srcNode.measured?.width || !tgtNode.measured?.width) {
@@ -147,27 +143,57 @@ function SmartEdge({
       }
     }
 
-    // Calculate perpendicular offset for multiple edges between same nodes (same source-target pair)
-    const EDGE_SPACING = 25; // pixels between edges
-    const offsetAmount = totalEdges > 1
-      ? (edgeIndex - (totalEdges - 1) / 2) * EDGE_SPACING
-      : 0;
+    // Get all edges for distribution calculations
+    const allEdges = getEdges();
 
-    // Apply offset perpendicular to edge direction
-    if (horizontalDominant) {
-      sourceY += offsetAmount;
-    } else {
-      sourceX += offsetAmount;
+    // ========================================
+    // DISTRIBUTE SOURCE CONNECTION POINTS
+    // Group all edges by source node + side, then spread them along the edge
+    // ========================================
+    const edgesFromSameSourceSide = allEdges.filter(e => {
+      if (e.source !== source) return false;
+      const edgeSourceNode = getNode(e.source);
+      const edgeTargetNode = getNode(e.target);
+      if (!edgeSourceNode || !edgeTargetNode) return false;
+      // Calculate source side for this edge (opposite of target side logic)
+      const side = getTargetSide(edgeSourceNode, edgeTargetNode);
+      // Source side is opposite: if target is on left, source connects from right
+      const edgeSourceSide = side === Position.Left ? Position.Right :
+                             side === Position.Right ? Position.Left :
+                             side === Position.Top ? Position.Bottom : Position.Top;
+      return edgeSourceSide === sourcePos;
+    });
+
+    // Sort edges consistently (by target name, then field name) for stable indexing
+    edgesFromSameSourceSide.sort((a, b) => {
+      if (a.target !== b.target) return a.target.localeCompare(b.target);
+      const aField = (a.data as SmartEdgeData)?.fieldName ?? '';
+      const bField = (b.data as SmartEdgeData)?.fieldName ?? '';
+      return aField.localeCompare(bField);
+    });
+
+    // Find this edge's index among edges from the same source side
+    const sourceSideIndex = edgesFromSameSourceSide.findIndex(e => e.id === id);
+    const sourceSideTotal = edgesFromSameSourceSide.length;
+
+    // Distribute source connection points along the node edge
+    if (sourceSideTotal > 1 && sourceSideIndex >= 0) {
+      if (sourcePos === Position.Left || sourcePos === Position.Right) {
+        // Vertical distribution along left/right sides
+        const spacing = sourceHeight / (sourceSideTotal + 1);
+        sourceY = sourceNode.position.y + spacing * (sourceSideIndex + 1);
+      } else {
+        // Horizontal distribution along top/bottom sides
+        const spacing = sourceWidth / (sourceSideTotal + 1);
+        sourceX = sourceNode.position.x + spacing * (sourceSideIndex + 1);
+      }
     }
 
     // ========================================
     // DISTRIBUTE TARGET CONNECTION POINTS
     // Group all edges by target node + side, then spread them along the edge
     // ========================================
-    const allEdges = getEdges();
-
-    // Find all edges connecting to the same side of this target node
-    const edgesToSameSide = allEdges.filter(e => {
+    const edgesToSameTargetSide = allEdges.filter(e => {
       if (e.target !== target) return false;
       const edgeSourceNode = getNode(e.source);
       const edgeTargetNode = getNode(e.target);
@@ -176,7 +202,7 @@ function SmartEdge({
     });
 
     // Sort edges consistently (by source name, then field name) for stable indexing
-    edgesToSameSide.sort((a, b) => {
+    edgesToSameTargetSide.sort((a, b) => {
       if (a.source !== b.source) return a.source.localeCompare(b.source);
       const aField = (a.data as SmartEdgeData)?.fieldName ?? '';
       const bField = (b.data as SmartEdgeData)?.fieldName ?? '';
@@ -184,8 +210,8 @@ function SmartEdge({
     });
 
     // Find this edge's index among edges to the same target side
-    const targetSideIndex = edgesToSameSide.findIndex(e => e.id === id);
-    const targetSideTotal = edgesToSameSide.length;
+    const targetSideIndex = edgesToSameTargetSide.findIndex(e => e.id === id);
+    const targetSideTotal = edgesToSameTargetSide.length;
 
     // Distribute target connection points along the node edge
     if (targetSideTotal > 1 && targetSideIndex >= 0) {
@@ -209,10 +235,10 @@ function SmartEdge({
       targetPosition: targetPos,
     });
 
-    // Apply same perpendicular offset to labels so they fan out with their edges
-    // This prevents label overlap when multiple edges connect the same nodes
-    const labelX = horizontalDominant ? rawLabelX : rawLabelX + offsetAmount;
-    const labelY = horizontalDominant ? rawLabelY + offsetAmount : rawLabelY;
+    // Labels are positioned along the bezier path midpoint
+    // Since edges are now distributed at both ends, labels naturally spread out
+    const labelX = rawLabelX;
+    const labelY = rawLabelY;
 
     // Calculate cardinality label positions (offset from connection points)
     const cardinalityOffset = 25;
@@ -250,10 +276,9 @@ function SmartEdge({
     targetNode?.position.y,
     targetNode?.measured?.width,
     targetNode?.measured?.height,
-    edgeIndex,
-    totalEdges,
-    // For target-side distribution
+    // For source-side and target-side distribution
     id,
+    source,
     target,
     getEdges,
     getNode,
