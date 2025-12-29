@@ -48,6 +48,12 @@ const SETTINGS_GROUPS: Array<{
     title: 'Diagram',
     settings: [
       {
+        key: 'compactMode',
+        label: 'Compact Mode',
+        description: 'Hide field lists on nodes for a cleaner overview',
+        colors: { bg: 'bg-slate-100', border: 'border-slate-300', text: 'text-slate-700' },
+      },
+      {
         key: 'showEdgeLabels',
         label: 'Field Labels',
         description: 'Show field names (e.g., ParentId) on relationship lines',

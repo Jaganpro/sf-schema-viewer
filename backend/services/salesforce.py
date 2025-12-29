@@ -431,28 +431,40 @@ class SalesforceService:
         # Return only last 3 years of releases (3 releases/year × 3 years = 9 versions)
         return versions[:9]
 
-    def get_sharing_settings(self, object_names: list[str]) -> dict[str, dict]:
-        """Fetch Organization-Wide Default (OWD) sharing settings via Tooling API.
+    def get_entity_metadata(self, object_names: list[str]) -> dict[str, dict]:
+        """Fetch object-level metadata via Tooling API EntityDefinition.
 
-        Queries EntityDefinition for InternalSharingModel and ExternalSharingModel.
+        Queries EntityDefinition for OWD sharing settings and additional metadata:
+        - InternalSharingModel / ExternalSharingModel (OWD)
+        - IsFieldHistoryTracked (has field history enabled)
+        - LastModifiedDate (schema modification timestamp)
+        - Description (object description)
+        - PublisherId (managed package publisher)
 
         Args:
             object_names: List of object API names (e.g., ["Account", "Contact"])
 
         Returns:
-            Dict mapping object name to sharing info:
+            Dict mapping object name to metadata:
             {
-                "Account": {"internal": "Private", "external": "Private"},
-                "Contact": {"internal": "ControlledByParent", "external": "ControlledByParent"}
+                "Account": {
+                    "internal": "Private",
+                    "external": "Private",
+                    "is_field_history_tracked": True,
+                    "last_modified_date": "2024-01-15T10:30:00.000+0000",
+                    "description": "Accounts are companies...",
+                    "publisher_id": None
+                }
             }
         """
         if not object_names:
             return {}
 
-        # Build SOQL query for Tooling API
+        # Build SOQL query for Tooling API with expanded fields
         names_str = "', '".join(object_names)
         query = f"""
-            SELECT QualifiedApiName, InternalSharingModel, ExternalSharingModel
+            SELECT QualifiedApiName, InternalSharingModel, ExternalSharingModel,
+                   IsFieldHistoryTracked, LastModifiedDate, Description, PublisherId
             FROM EntityDefinition
             WHERE QualifiedApiName IN ('{names_str}')
         """
@@ -462,21 +474,104 @@ class SalesforceService:
             encoded_query = urllib.parse.quote(query.strip())
             result = self.sf.toolingexecute(f"query?q={encoded_query}")
 
-            sharing_settings = {}
+            entity_metadata = {}
             for record in result.get("records", []):
                 obj_name = record.get("QualifiedApiName")
                 if obj_name:
-                    sharing_settings[obj_name] = {
+                    entity_metadata[obj_name] = {
+                        # OWD sharing settings (backward compatible)
                         "internal": record.get("InternalSharingModel"),
                         "external": record.get("ExternalSharingModel"),
+                        # New Tier 1 fields
+                        "is_field_history_tracked": record.get("IsFieldHistoryTracked"),
+                        "last_modified_date": record.get("LastModifiedDate"),
+                        "description": record.get("Description"),
+                        "publisher_id": record.get("PublisherId"),
                     }
 
-            return sharing_settings
+            return entity_metadata
 
         except Exception as e:
-            # Log error but don't fail - sharing settings are optional enrichment
-            print(f"Warning: Failed to get sharing settings: {e}")
+            # Log error but don't fail - metadata is optional enrichment
+            print(f"Warning: Failed to get entity metadata: {e}")
             return {}
+
+    def get_field_metadata(self, object_names: list[str]) -> dict[str, dict]:
+        """Fetch field-level metadata via Tooling API FieldDefinition.
+
+        Queries FieldDefinition for metadata not available in standard Describe:
+        - IsIndexed (field is indexed for SOQL performance)
+        - SecurityClassification (data classification: Confidential, Internal, etc.)
+        - ComplianceGroup (compliance: GDPR, PII, CCPA, HIPAA)
+        - BusinessStatus (Active, Deprecated, Hidden)
+        - Description (field description - often more complete than Describe)
+
+        Args:
+            object_names: List of object API names (e.g., ["Account", "Contact"])
+
+        Returns:
+            Dict mapping "ObjectName.FieldName" to metadata:
+            {
+                "Account.Name": {
+                    "is_indexed": True,
+                    "security_classification": "Confidential",
+                    "compliance_group": "GDPR",
+                    "business_status": "Active",
+                    "description": "Account name..."
+                }
+            }
+        """
+        if not object_names:
+            return {}
+
+        # Build SOQL query for Tooling API
+        names_str = "', '".join(object_names)
+        query = f"""
+            SELECT EntityDefinition.QualifiedApiName, QualifiedApiName,
+                   IsIndexed, SecurityClassification, ComplianceGroup,
+                   BusinessStatus, Description
+            FROM FieldDefinition
+            WHERE EntityDefinition.QualifiedApiName IN ('{names_str}')
+        """
+
+        try:
+            # Use Tooling API query endpoint
+            encoded_query = urllib.parse.quote(query.strip())
+            result = self.sf.toolingexecute(f"query?q={encoded_query}")
+
+            field_metadata = {}
+            for record in result.get("records", []):
+                # Build composite key: "ObjectName.FieldName"
+                entity_def = record.get("EntityDefinition", {})
+                obj_name = entity_def.get("QualifiedApiName") if entity_def else None
+                field_name = record.get("QualifiedApiName")
+
+                if obj_name and field_name:
+                    # QualifiedApiName for fields includes object, extract just field name
+                    # Format is typically "ObjectName.FieldName"
+                    if "." in field_name:
+                        field_name = field_name.split(".")[-1]
+
+                    key = f"{obj_name}.{field_name}"
+                    field_metadata[key] = {
+                        "is_indexed": record.get("IsIndexed"),
+                        "security_classification": record.get("SecurityClassification"),
+                        "compliance_group": record.get("ComplianceGroup"),
+                        "business_status": record.get("BusinessStatus"),
+                        "description": record.get("Description"),
+                    }
+
+            return field_metadata
+
+        except Exception as e:
+            # Log error but don't fail - field metadata is optional enrichment
+            print(f"Warning: Failed to get field metadata: {e}")
+            return {}
+
+    # Backward compatibility alias
+    def get_sharing_settings(self, object_names: list[str]) -> dict[str, dict]:
+        """Alias for get_entity_metadata for backward compatibility."""
+        return self.get_entity_metadata(object_names)
 
     def get_record_counts(self, object_names: list[str]) -> dict[str, int]:
         """Fetch approximate record counts via REST API limits/recordCount.

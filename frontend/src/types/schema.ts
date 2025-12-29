@@ -285,18 +285,35 @@ export interface ApiVersionInfo {
 }
 
 // ============================================================================
-// Object Enrichment Types (OWD, Record Counts)
+// Object Enrichment Types (OWD, Record Counts, Tooling API Metadata)
 // ============================================================================
 
 export interface ObjectEnrichmentInfo {
+  // OWD sharing settings (original)
   internal_sharing: string | null;  // e.g., "Private", "Read", "ReadWrite"
   external_sharing: string | null;  // e.g., "Private", "Read"
   record_count: number | null;      // Approximate record count
   is_ldv: boolean;                  // True if record_count >= 5,000,000
+
+  // Tier 1 - EntityDefinition expansion
+  is_field_history_tracked?: boolean | null;  // Has field history tracking enabled
+  last_modified_date?: string | null;         // Schema last modified timestamp
+  tooling_description?: string | null;        // Object description from Tooling API
+  publisher_id?: string | null;               // Managed package publisher ID
+}
+
+export interface FieldMetadataInfo {
+  // Tier 2 - FieldDefinition metadata
+  is_indexed?: boolean | null;              // Field is indexed for SOQL performance
+  security_classification?: string | null;  // e.g., "Confidential", "Internal"
+  compliance_group?: string | null;         // e.g., "GDPR", "PII", "CCPA", "HIPAA"
+  business_status?: string | null;          // e.g., "Active", "Deprecated", "Hidden"
+  tooling_description?: string | null;      // Field description from Tooling API
 }
 
 export interface ObjectEnrichmentResponse {
   enrichments: Record<string, ObjectEnrichmentInfo>;
+  field_metadata?: Record<string, FieldMetadataInfo> | null;  // "Object.Field" -> metadata
   errors?: Record<string, string>;
 }
 

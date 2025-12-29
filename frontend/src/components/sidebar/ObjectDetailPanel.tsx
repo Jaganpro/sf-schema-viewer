@@ -13,6 +13,8 @@ import {
   Link,
   ExternalLink,
   ChevronDown,
+  History,
+  Clock,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -81,6 +83,22 @@ function getClassification(custom: boolean, namespacePrefix?: string) {
   return { label: 'Custom', variant: 'custom' as const };
 }
 
+/** Format ISO date as relative time (e.g., "3 days ago") */
+function formatRelativeTime(isoDate: string | null | undefined): string {
+  if (!isoDate) return '—';
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+  return `${Math.floor(diffDays / 365)} years ago`;
+}
+
 /** Format field type for display */
 function formatFieldType(field: FieldInfo): string {
   let type = field.type;
@@ -123,6 +141,10 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     refreshEdges,
     // Object type filters (for filtering child relationships)
     objectTypeFilters,
+    // Object enrichment data (Tooling API metadata - Tier 1)
+    objectEnrichment,
+    enrichmentLoading,
+    fetchObjectEnrichment,
   } = useAppStore();
   const [fieldSearch, setFieldSearch] = useState('');
   const [relSearch, setRelSearch] = useState('');
@@ -188,6 +210,15 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     }
   }, [objectName, describedObjects, describeObject]);
 
+  // Auto-fetch enrichment data (Tier 1 metadata) when panel opens
+  useEffect(() => {
+    const hasEnrichment = objectEnrichment.has(objectName);
+    const isLoading = enrichmentLoading.has(objectName);
+    if (objectName && !hasEnrichment && !isLoading) {
+      fetchObjectEnrichment([objectName]);
+    }
+  }, [objectName, objectEnrichment, enrichmentLoading, fetchObjectEnrichment]);
+
   // Reset search term when switching to a different object
   useEffect(() => {
     setRelSearch('');
@@ -201,6 +232,9 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
 
   // Get detailed describe if available
   const objectDescribe = describedObjects.get(objectName);
+
+  // Get enrichment data (Tooling API metadata - Tier 1)
+  const enrichment = objectEnrichment.get(objectName);
 
   // Get selected fields for this object
   const selectedFields = selectedFieldsByObject.get(objectName) ?? new Set<string>();
@@ -757,13 +791,64 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
           <TabsContent value="details" className="flex-1 flex flex-col min-h-0 mt-0">
             <ScrollArea className="flex-1">
               <div className="px-4 py-3 space-y-4">
-                {/* 1. Description Section */}
-                {objectDescribe.description && (
+                {/* 1. Description Section (prefer Tooling API description if available) */}
+                {(enrichment?.tooling_description || objectDescribe.description) && (
                   <div>
                     <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-1">
                       Description
                     </div>
-                    <p className="text-sm text-sf-text leading-relaxed">{objectDescribe.description}</p>
+                    <p className="text-xs text-sf-text leading-relaxed">
+                      {enrichment?.tooling_description || objectDescribe.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Tooling API Metadata Section (Tier 1 - EntityDefinition) */}
+                {enrichment && (
+                  <div>
+                    <div className="text-[11px] text-sf-text-muted uppercase tracking-wide font-semibold mb-2">
+                      Tooling API Metadata
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {/* Field History Tracking badge */}
+                      <span className={cn(
+                        "inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium",
+                        enrichment.is_field_history_tracked
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-gray-100 text-gray-400"
+                      )}>
+                        <History className="h-3 w-3" />
+                        {enrichment.is_field_history_tracked ? "History Tracked" : "No History"}
+                      </span>
+                      {/* Schema Modified timestamp */}
+                      {enrichment.last_modified_date && (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-slate-100 text-slate-600"
+                          title={`Schema modified: ${new Date(enrichment.last_modified_date).toLocaleDateString()}`}
+                        >
+                          <Clock className="h-3 w-3" />
+                          Modified {formatRelativeTime(enrichment.last_modified_date)}
+                        </span>
+                      )}
+                      {/* OWD badges (moved here from just node display) */}
+                      {enrichment.internal_sharing && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-blue-100 text-blue-700">
+                          OWD: {enrichment.internal_sharing}
+                        </span>
+                      )}
+                      {/* Record count if available */}
+                      {enrichment.record_count !== null && enrichment.record_count !== undefined && (
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium",
+                          enrichment.is_ldv
+                            ? "bg-red-100 text-red-700"
+                            : "bg-green-100 text-green-700"
+                        )}>
+                          {enrichment.record_count.toLocaleString()} records
+                          {enrichment.is_ldv && " [LDV]"}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -1218,6 +1303,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       {/* Field Detail Modal */}
       <FieldDetailModal
         field={selectedField}
+        objectName={objectName}
         onClose={() => setSelectedField(null)}
       />
 

@@ -1,17 +1,20 @@
 /**
  * FieldDetailModal - Centered popup modal displaying comprehensive field metadata.
  * Organized into colorful grouped sections matching the Details tab aesthetic.
+ * Includes Tier 2 Tooling API metadata (indexed, security classification, compliance).
  */
 
-import { X } from 'lucide-react';
+import { X, Search, Shield, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/store';
 import type { FieldInfo } from '@/types/schema';
 
 interface FieldDetailModalProps {
   field: FieldInfo | null;
+  objectName?: string;  // Needed to look up field metadata from store
   onClose: () => void;
 }
 
@@ -73,13 +76,29 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
+export function FieldDetailModal({ field, objectName, onClose }: FieldDetailModalProps) {
+  // Get field metadata from store (Tier 2 - Tooling API FieldDefinition)
+  const fieldMetadata = useAppStore((state) => state.fieldMetadata);
+
   if (!field) return null;
 
   const classification = getFieldClassification(field);
   const isReference = field.type === 'reference' && field.reference_to?.length;
   const isPicklist = field.type === 'picklist' || field.type === 'multipicklist';
   const hasNumeric = field.precision !== undefined || field.scale !== undefined || field.digits !== undefined;
+
+  // Look up Tier 2 metadata using composite key "ObjectName.FieldName"
+  const metadataKey = objectName ? `${objectName}.${field.name}` : null;
+  const tierTwoMetadata = metadataKey ? fieldMetadata.get(metadataKey) : null;
+
+  // Check if we have any Tier 2 data to show
+  const hasTierTwoData = tierTwoMetadata && (
+    tierTwoMetadata.is_indexed ||
+    tierTwoMetadata.security_classification ||
+    tierTwoMetadata.compliance_group ||
+    tierTwoMetadata.business_status ||
+    tierTwoMetadata.tooling_description
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -138,6 +157,51 @@ export function FieldDetailModal({ field, onClose }: FieldDetailModalProps) {
         {/* Content */}
         <ScrollArea className="flex-1 overflow-auto">
           <div className="p-4 space-y-1">
+
+            {/* DATA CLASSIFICATION Section (Tier 2 - Tooling API FieldDefinition) */}
+            {hasTierTwoData && (
+              <>
+                <SectionHeader title="Data Classification" />
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {tierTwoMetadata?.is_indexed && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-blue-100 text-blue-700">
+                      <Search className="h-3 w-3" />
+                      Indexed
+                    </span>
+                  )}
+                  {tierTwoMetadata?.security_classification && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-700">
+                      <Shield className="h-3 w-3" />
+                      {tierTwoMetadata.security_classification}
+                    </span>
+                  )}
+                  {tierTwoMetadata?.compliance_group && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-red-100 text-red-700">
+                      <AlertTriangle className="h-3 w-3" />
+                      {tierTwoMetadata.compliance_group}
+                    </span>
+                  )}
+                  {tierTwoMetadata?.business_status && tierTwoMetadata.business_status !== 'Active' && (
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium",
+                      tierTwoMetadata.business_status === 'Deprecated'
+                        ? "bg-orange-100 text-orange-700"
+                        : tierTwoMetadata.business_status === 'Hidden'
+                        ? "bg-gray-200 text-gray-600"
+                        : "bg-slate-100 text-slate-600"
+                    )}>
+                      {tierTwoMetadata.business_status}
+                    </span>
+                  )}
+                </div>
+                {/* Tooling API description (may be more complete than standard describe) */}
+                {tierTwoMetadata?.tooling_description && (
+                  <div className="bg-blue-50 border border-blue-200 rounded p-2 text-[11px] text-blue-800 mb-2">
+                    {tierTwoMetadata.tooling_description}
+                  </div>
+                )}
+              </>
+            )}
 
             {/* IDENTITY Section */}
             <SectionHeader title="Identity" />

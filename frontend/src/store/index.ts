@@ -7,6 +7,7 @@ import type { Node, Edge } from '@xyflow/react';
 import type {
   ApiVersionInfo,
   AuthStatus,
+  FieldMetadataInfo,
   ObjectBasicInfo,
   ObjectDescribe,
   ObjectEnrichmentInfo,
@@ -82,6 +83,7 @@ export interface BadgeDisplaySettings {
   showRecordCount: boolean;       // Show record count badge (with [LDV] suffix for large data volumes)
   animateEdges: boolean;          // Animate relationship lines (marching ants effect)
   showEdgeLabels: boolean;        // Show field name labels on relationship lines
+  compactMode: boolean;           // Hide field lists on nodes for cleaner overview
 }
 
 /** Default badge settings - show internal sharing, record counts, animation, and edge labels by default */
@@ -91,6 +93,7 @@ const DEFAULT_BADGE_SETTINGS: BadgeDisplaySettings = {
   showRecordCount: true,
   animateEdges: true,
   showEdgeLabels: true,
+  compactMode: false,
 };
 
 interface AppState {
@@ -149,6 +152,10 @@ interface AppState {
   // Object enrichment state (OWD, record counts - loaded asynchronously)
   objectEnrichment: Map<string, ObjectEnrichmentInfo>;
   enrichmentLoading: Set<string>;  // Object names currently being enriched
+
+  // Field metadata state (Tier 2 - indexed fields, data classification, etc.)
+  // Key format: "ObjectName.FieldName" -> FieldMetadataInfo
+  fieldMetadata: Map<string, FieldMetadataInfo>;
 
   // Badge display settings (controls which metadata badges appear on nodes)
   badgeSettings: BadgeDisplaySettings;
@@ -242,6 +249,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   relationshipTypeByKey: new Map(),  // Tracks cascade_delete for accurate MD/Lookup rendering
   objectEnrichment: new Map(),  // OWD and record counts for objects
   enrichmentLoading: new Set(),  // Objects currently being enriched
+  fieldMetadata: new Map(),  // Field-level metadata (indexed, classification, etc.)
   badgeSettings: { ...DEFAULT_BADGE_SETTINGS },
   showSettingsDropdown: false,
   error: null,
@@ -1065,11 +1073,23 @@ export const useAppStore = create<AppState>((set, get) => ({
         newEnrichment.set(name, info);
       }
 
+      // Update field metadata map if present (Tier 2 data)
+      const newFieldMetadata = new Map(get().fieldMetadata);
+      if (response.field_metadata) {
+        for (const [key, info] of Object.entries(response.field_metadata)) {
+          newFieldMetadata.set(key, info);
+        }
+      }
+
       // Clear loading state
       const updatedLoading = new Set(get().enrichmentLoading);
       toFetch.forEach((name) => updatedLoading.delete(name));
 
-      set({ objectEnrichment: newEnrichment, enrichmentLoading: updatedLoading });
+      set({
+        objectEnrichment: newEnrichment,
+        fieldMetadata: newFieldMetadata,
+        enrichmentLoading: updatedLoading,
+      });
     } catch {
       // Fail silently - enrichment is nice-to-have, not critical
       // Clear loading state on error

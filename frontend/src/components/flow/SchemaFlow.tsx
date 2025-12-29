@@ -15,8 +15,6 @@ import {
 import '@xyflow/react/dist/style.css';
 import {
   BarChart3,
-  ClipboardList,
-  LayoutGrid,
   RefreshCcw,
   Focus,
   Loader2,
@@ -53,10 +51,11 @@ export default function SchemaFlow() {
     toggleLegend,
     showSettingsDropdown,
     toggleSettingsDropdown,
+    badgeSettings,
   } = useAppStore();
 
-  // Compact mode state
-  const [compactMode, setCompactMode] = useState(false);
+  // Compact mode from settings (controls field visibility on nodes)
+  const compactMode = badgeSettings.compactMode;
 
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
@@ -191,28 +190,6 @@ export default function SchemaFlow() {
 
         {/* Control Panel */}
         <Panel position="top-right" className="flex gap-2">
-          <button
-            onClick={() => setCompactMode(!compactMode)}
-            className={cn(
-              'bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]',
-              compactMode
-                ? 'bg-sf-blue border-sf-blue text-white hover:bg-sf-blue-dark'
-                : 'text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue'
-            )}
-            title={compactMode ? 'Show fields' : 'Hide fields (compact mode)'}
-          >
-            {compactMode ? (
-              <>
-                <ClipboardList className="h-4 w-4" />
-                Show Fields
-              </>
-            ) : (
-              <>
-                <LayoutGrid className="h-4 w-4" />
-                Compact
-              </>
-            )}
-          </button>
           <button
             onClick={handleReLayout}
             className="bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"

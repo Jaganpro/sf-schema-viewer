@@ -12,6 +12,7 @@ from models.schema import (
     ApiVersionInfo,
     BatchDescribeRequest,
     BatchDescribeResponse,
+    FieldMetadataInfo,
     ObjectBasicInfo,
     ObjectDescribe,
     ObjectEnrichmentInfo,
@@ -146,39 +147,75 @@ async def get_object_enrichment(
     ),
     session: Session = Depends(get_current_session),
 ):
-    """Get enrichment data (OWD sharing settings and record counts) for objects.
+    """Get enrichment data (Tooling API metadata and record counts) for objects.
 
     This endpoint fetches additional metadata not available in standard describe:
-    - Organization-Wide Defaults (OWD) sharing settings from Tooling API
+
+    Tier 1 (EntityDefinition):
+    - Organization-Wide Defaults (OWD) sharing settings
+    - IsFieldHistoryTracked (history tracking enabled)
+    - LastModifiedDate (schema modification timestamp)
+    - Description (object description)
+    - PublisherId (managed package publisher)
+
+    Tier 2 (FieldDefinition):
+    - IsIndexed (field indexed for SOQL performance)
+    - SecurityClassification (data classification)
+    - ComplianceGroup (GDPR, PII, CCPA, HIPAA)
+    - BusinessStatus (Active, Deprecated, Hidden)
+    - Description (field description)
+
+    Plus:
     - Approximate record counts to identify Large Data Volume (LDV) objects
 
-    Both data sources are fetched and errors are handled gracefully - if one
-    fails, the other will still be returned.
+    All data sources are fetched and errors are handled gracefully.
     """
     try:
         sf = get_sf_service(session, api_version)
 
-        # Fetch both data sources (these handle their own errors internally)
-        sharing_settings = sf.get_sharing_settings(request.object_names)
+        # Fetch all data sources (these handle their own errors internally)
+        entity_metadata = sf.get_entity_metadata(request.object_names)
         record_counts = sf.get_record_counts(request.object_names)
+        raw_field_metadata = sf.get_field_metadata(request.object_names)
 
         # Combine into enrichment response
         enrichments = {}
         errors = {}
 
         for obj_name in request.object_names:
-            sharing = sharing_settings.get(obj_name, {})
+            entity = entity_metadata.get(obj_name, {})
             count = record_counts.get(obj_name)
 
             enrichments[obj_name] = ObjectEnrichmentInfo(
-                internal_sharing=sharing.get("internal"),
-                external_sharing=sharing.get("external"),
+                # OWD (original)
+                internal_sharing=entity.get("internal"),
+                external_sharing=entity.get("external"),
                 record_count=count,
                 is_ldv=count is not None and count >= LDV_THRESHOLD,
+                # Tier 1 - EntityDefinition expansion
+                is_field_history_tracked=entity.get("is_field_history_tracked"),
+                last_modified_date=entity.get("last_modified_date"),
+                tooling_description=entity.get("description"),
+                publisher_id=entity.get("publisher_id"),
             )
+
+        # Transform field metadata to response format (Tier 2)
+        field_metadata = None
+        if raw_field_metadata:
+            field_metadata = {
+                key: FieldMetadataInfo(
+                    is_indexed=val.get("is_indexed"),
+                    security_classification=val.get("security_classification"),
+                    compliance_group=val.get("compliance_group"),
+                    business_status=val.get("business_status"),
+                    tooling_description=val.get("description"),
+                )
+                for key, val in raw_field_metadata.items()
+            }
 
         return ObjectEnrichmentResponse(
             enrichments=enrichments,
+            field_metadata=field_metadata,
             errors=errors if errors else None,
         )
 

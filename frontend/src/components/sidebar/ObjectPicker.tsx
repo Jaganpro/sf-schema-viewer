@@ -11,6 +11,16 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FilterChip } from '@/components/ui/filter-chip';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,6 +39,10 @@ import { useAppStore } from '../../store';
 import { NewObjectsModal } from './NewObjectsModal';
 import { CloudPacksPanel } from './CloudPacksPanel';
 import type { ObjectBasicInfo } from '../../types/schema';
+
+// Maximum number of objects that can be safely rendered without performance issues
+// React Flow with Dagre layout becomes slow with too many nodes/edges
+const MAX_SAFE_OBJECTS = 50;
 
 interface ObjectItemProps {
   object: ObjectBasicInfo;
@@ -191,6 +205,10 @@ export default function ObjectPicker() {
   const [showReleaseSummary, setShowReleaseSummary] = useState(false);
   const [activeTab, setActiveTab] = useState<'objects' | 'packs'>('objects');
 
+  // Warning dialog state for large selections
+  const [showLimitWarning, setShowLimitWarning] = useState(false);
+  const [pendingSelection, setPendingSelection] = useState<string[]>([]);
+
   // Get the selected version's release label for dynamic text
   const selectedVersionInfo = availableApiVersions.find(v => `v${v.version}` === apiVersion);
   const selectedReleaseLabel = selectedVersionInfo?.label || 'current release';
@@ -336,8 +354,29 @@ export default function ObjectPicker() {
       ...selectedObjectNames,
       ...filteredObjects.map((obj) => obj.name),
     ])];
-    selectObjects(newSelection);
+
+    // Check if selection exceeds safe limit
+    if (newSelection.length > MAX_SAFE_OBJECTS) {
+      setPendingSelection(newSelection);
+      setShowLimitWarning(true);
+    } else {
+      selectObjects(newSelection);
+    }
   }, [filteredObjects, selectedObjectNames, selectObjects]);
+
+  // Handler for selecting only the safe number of objects
+  const handleSelectSafe = useCallback(() => {
+    selectObjects(pendingSelection.slice(0, MAX_SAFE_OBJECTS));
+    setShowLimitWarning(false);
+    setPendingSelection([]);
+  }, [pendingSelection, selectObjects]);
+
+  // Handler for selecting all objects despite the warning
+  const handleSelectAnyway = useCallback(() => {
+    selectObjects(pendingSelection);
+    setShowLimitWarning(false);
+    setPendingSelection([]);
+  }, [pendingSelection, selectObjects]);
 
   const handleClearAll = useCallback(() => {
     clearAllSelections();
@@ -707,6 +746,36 @@ export default function ObjectPicker() {
           setFocusedObject(name);
         }}
       />
+
+      {/* Large Selection Warning Dialog */}
+      <AlertDialog open={showLimitWarning} onOpenChange={setShowLimitWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>⚠️ Large Selection Warning</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Selecting <strong>{pendingSelection.length}</strong> objects may cause performance issues
+                or crashes due to the complexity of rendering many nodes and relationships.
+              </p>
+              <p>
+                The recommended limit is <strong>{MAX_SAFE_OBJECTS}</strong> objects for optimal performance.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button variant="outline" onClick={handleSelectSafe}>
+              Select First {MAX_SAFE_OBJECTS}
+            </Button>
+            <AlertDialogAction
+              onClick={handleSelectAnyway}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Select All Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

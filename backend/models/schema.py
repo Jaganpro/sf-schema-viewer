@@ -253,16 +253,34 @@ class ObjectEnrichmentRequest(BaseModel):
 
 
 class ObjectEnrichmentInfo(BaseModel):
-    """Enrichment data for a single object (OWD + record count)."""
+    """Enrichment data for a single object (OWD + record count + Tooling API metadata)."""
 
+    # OWD sharing settings (Tier 1 - original)
     internal_sharing: str | None = None  # e.g., "Private", "Read", "ReadWrite"
     external_sharing: str | None = None  # e.g., "Private", "Read"
     record_count: int | None = None  # Approximate record count
     is_ldv: bool = False  # True if record_count >= 5,000,000
+
+    # Tier 1 - EntityDefinition expansion
+    is_field_history_tracked: bool | None = None  # Has field history tracking enabled
+    last_modified_date: str | None = None  # Schema last modified timestamp
+    tooling_description: str | None = None  # Object description from Tooling API
+    publisher_id: str | None = None  # Managed package publisher ID
+
+
+class FieldMetadataInfo(BaseModel):
+    """Field-level metadata from Tooling API FieldDefinition (Tier 2)."""
+
+    is_indexed: bool | None = None  # Field is indexed for SOQL performance
+    security_classification: str | None = None  # e.g., "Confidential", "Internal"
+    compliance_group: str | None = None  # e.g., "GDPR", "PII", "CCPA", "HIPAA"
+    business_status: str | None = None  # e.g., "Active", "Deprecated", "Hidden"
+    tooling_description: str | None = None  # Field description from Tooling API
 
 
 class ObjectEnrichmentResponse(BaseModel):
     """Response containing enrichment data for multiple objects."""
 
     enrichments: dict[str, ObjectEnrichmentInfo]  # Object name -> enrichment data
+    field_metadata: dict[str, FieldMetadataInfo] | None = None  # "Object.Field" -> metadata
     errors: dict[str, str] | None = None  # Object name -> error message
