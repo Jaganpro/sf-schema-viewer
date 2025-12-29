@@ -46,9 +46,43 @@
 ### 🔗 Relationship Visualization
 - 🛤️ **Smart Edge Routing** — Dynamic edge paths that avoid node overlaps
 - ➖ **Lookup Relationships** — Dashed blue lines for optional references
-- ➡️ **Master-Detail Relationships** — Solid purple lines with cascade delete
+- ➡️ **Master-Detail Relationships** — Solid red lines with cascade delete
 - 🔢 **Cardinality Markers** — Visual N:1 indicators showing relationship direction
+- 🏷️ **Field Name Labels** — See which field (e.g., ParentId) creates each relationship
+- 🎬 **Animated Edges** — Marching ants animation shows data flow direction
 - 📖 **Interactive Legend** — Collapsible legend explaining all visual elements
+
+### 📊 Node Metadata Badges
+Real-time metadata badges displayed on each object node:
+
+| Badge | Description | Example |
+|-------|-------------|---------|
+| 🔴 **OWD: Private** | Internal sharing model (red) | `OWD: Private` |
+| 🟡 **OWD: Read** | Internal sharing model (yellow) | `OWD: Read` |
+| 🟢 **OWD: ReadWrite** | Internal sharing model (green) | `OWD: ReadWrite` |
+| 🟠 **Ext: Private** | External sharing model | `Ext: Private` |
+| 🔵 **Count: 5.2M** | Record count (blue) | `Count: 5.2M` |
+| 🟠 **Count: 12M [LDV]** | Large Data Volume indicator (orange) | `Count: 12M [LDV]` |
+
+- Badges load asynchronously after nodes appear (non-blocking)
+- LDV threshold: Objects with >3M records are flagged
+- Record counts formatted: `5,200,000` → `5.2M`, `45,000` → `45K`
+
+### ⚙️ Settings Dropdown
+Customize your diagram view with the Settings button:
+
+**Node Badges:**
+| Toggle | Default | Description |
+|--------|---------|-------------|
+| 🔴 Sharing: Internal | ON | Show internal OWD sharing model |
+| 🟡 Sharing: External | OFF | Show external OWD sharing model |
+| 🟠 Record Counts | ON | Show record count with LDV indicator |
+
+**Diagram:**
+| Toggle | Default | Description |
+|--------|---------|-------------|
+| 🔵 Field Labels | ON | Show field names (ParentId) on relationship lines |
+| 🟣 Animate Edges | ON | Animated flow direction on relationship lines |
 
 ### 🔍 Powerful Filtering & Search
 - ⚡ **Instant Search** — Real-time filtering through 1000+ sObjects as you type
@@ -261,6 +295,7 @@ If you prefer to run servers separately:
 | 🔲 **Compact** | Toggle fields | Hide field lists for a cleaner high-level view |
 | 🔄 **Auto Layout** | Reorganize | Apply Dagre algorithm to arrange nodes hierarchically |
 | 🎯 **Fit View** | Center all | Fit all nodes in the viewport with padding |
+| ⚙️ **Settings** | Configure | Toggle badges, field labels, and edge animation |
 | ➕➖ **Zoom** | Scale view | Use controls or mouse wheel (0.1x - 2x) |
 
 ### Understanding the Diagram
@@ -314,7 +349,8 @@ sf-schema-viewer/
 │       │   ├── flow/        # React Flow components
 │       │   │   ├── SchemaFlow.tsx
 │       │   │   ├── ObjectNode.tsx
-│       │   │   └── SmartEdge.tsx
+│       │   │   ├── SmartEdge.tsx
+│       │   │   └── SettingsDropdown.tsx
 │       │   ├── layout/      # Layout components
 │       │   └── sidebar/     # Object picker & detail modals
 │       │       ├── ObjectPicker.tsx
@@ -345,6 +381,7 @@ sf-schema-viewer/
 | `/api/objects` | GET | List all sObjects in the org |
 | `/api/objects/{name}/describe` | GET | Get full describe for one object |
 | `/api/objects/describe` | POST | Batch describe multiple objects |
+| `/api/objects/enrichment` | POST | Get OWD and record counts for objects |
 
 ---
 

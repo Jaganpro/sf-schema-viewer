@@ -9,6 +9,7 @@ import type {
   AuthStatus,
   ObjectBasicInfo,
   ObjectDescribe,
+  ObjectEnrichmentInfo,
 } from '../types/schema';
 import type { ObjectNodeData } from '../components/flow/ObjectNode';
 import { api } from '../api/client';
@@ -72,6 +73,26 @@ interface ReleaseStat {
   newObjectNames: string[];  // Actual object API names (for popup modal)
 }
 
+/**
+ * Badge display settings - controls which metadata badges are shown on nodes
+ */
+export interface BadgeDisplaySettings {
+  showInternalSharing: boolean;   // Show internal OWD sharing badge
+  showExternalSharing: boolean;   // Show external OWD sharing badge
+  showRecordCount: boolean;       // Show record count badge (with [LDV] suffix for large data volumes)
+  animateEdges: boolean;          // Animate relationship lines (marching ants effect)
+  showEdgeLabels: boolean;        // Show field name labels on relationship lines
+}
+
+/** Default badge settings - show internal sharing, record counts, animation, and edge labels by default */
+const DEFAULT_BADGE_SETTINGS: BadgeDisplaySettings = {
+  showInternalSharing: true,
+  showExternalSharing: false,
+  showRecordCount: true,
+  animateEdges: true,
+  showEdgeLabels: true,
+};
+
 interface AppState {
   // Auth state
   authStatus: AuthStatus | null;
@@ -125,6 +146,14 @@ interface AppState {
   // Used to determine accurate MD/Lookup type in diagram (fixes divergence with panel badge)
   relationshipTypeByKey: Map<string, boolean>;
 
+  // Object enrichment state (OWD, record counts - loaded asynchronously)
+  objectEnrichment: Map<string, ObjectEnrichmentInfo>;
+  enrichmentLoading: Set<string>;  // Object names currently being enriched
+
+  // Badge display settings (controls which metadata badges appear on nodes)
+  badgeSettings: BadgeDisplaySettings;
+  showSettingsDropdown: boolean;
+
   // Error state
   error: string | null;
 
@@ -172,6 +201,11 @@ interface AppState {
   clearError: () => void;
   clearAllSelections: () => void;
   addCloudPack: (packId: string) => Promise<{ added: number; total: number }>;
+  // Enrichment actions
+  fetchObjectEnrichment: (objectNames: string[]) => Promise<void>;
+  // Badge display settings actions
+  toggleSettingsDropdown: () => void;
+  toggleBadgeSetting: (key: keyof BadgeDisplaySettings) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -200,12 +234,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedNamespaces: [],
   searchTerm: '',
   objectTypeFilters: { ...DEFAULT_OBJECT_TYPE_FILTERS },
-  showLegend: true,
+  showLegend: false,
   focusedObjectName: null,
   advancedFiltersExpanded: false,  // Default collapsed
   selectedFieldsByObject: new Map(),
   selectedChildRelsByParent: new Map(),  // Tracks child relationships for edge filtering
   relationshipTypeByKey: new Map(),  // Tracks cascade_delete for accurate MD/Lookup rendering
+  objectEnrichment: new Map(),  // OWD and record counts for objects
+  enrichmentLoading: new Set(),  // Objects currently being enriched
+  badgeSettings: { ...DEFAULT_BADGE_SETTINGS },
+  showSettingsDropdown: false,
   error: null,
 
   // Actions
@@ -997,5 +1035,61 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().applyLayout();
 
     return { added: toAdd.length, total: pack.objects.length };
+  },
+
+  // Fetch enrichment data (OWD, record counts) for objects asynchronously
+  // This is called after objects are added to the ERD for background loading
+  fetchObjectEnrichment: async (objectNames: string[]) => {
+    if (objectNames.length === 0) return;
+
+    const { apiVersion, objectEnrichment, enrichmentLoading } = get();
+
+    // Filter out objects already enriched or currently loading
+    const toFetch = objectNames.filter(
+      (name) => !objectEnrichment.has(name) && !enrichmentLoading.has(name)
+    );
+
+    if (toFetch.length === 0) return;
+
+    // Mark objects as loading
+    const newLoading = new Set(enrichmentLoading);
+    toFetch.forEach((name) => newLoading.add(name));
+    set({ enrichmentLoading: newLoading });
+
+    try {
+      const response = await api.schema.getObjectEnrichment(toFetch, apiVersion ?? undefined);
+
+      // Update enrichment map with results
+      const newEnrichment = new Map(get().objectEnrichment);
+      for (const [name, info] of Object.entries(response.enrichments)) {
+        newEnrichment.set(name, info);
+      }
+
+      // Clear loading state
+      const updatedLoading = new Set(get().enrichmentLoading);
+      toFetch.forEach((name) => updatedLoading.delete(name));
+
+      set({ objectEnrichment: newEnrichment, enrichmentLoading: updatedLoading });
+    } catch {
+      // Fail silently - enrichment is nice-to-have, not critical
+      // Clear loading state on error
+      const updatedLoading = new Set(get().enrichmentLoading);
+      toFetch.forEach((name) => updatedLoading.delete(name));
+      set({ enrichmentLoading: updatedLoading });
+    }
+  },
+
+  // Badge display settings actions
+  toggleSettingsDropdown: () => {
+    set((state) => ({ showSettingsDropdown: !state.showSettingsDropdown }));
+  },
+
+  toggleBadgeSetting: (key: keyof BadgeDisplaySettings) => {
+    set((state) => ({
+      badgeSettings: {
+        ...state.badgeSettings,
+        [key]: !state.badgeSettings[key],
+      },
+    }));
   },
 }));

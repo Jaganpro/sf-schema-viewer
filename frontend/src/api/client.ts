@@ -8,6 +8,7 @@ import type {
   BatchDescribeResponse,
   ObjectBasicInfo,
   ObjectDescribe,
+  ObjectEnrichmentResponse,
   SessionInfo,
 } from '../types/schema';
 
@@ -88,6 +89,15 @@ export const api = {
     describeObjects: (objectNames: string[], apiVersion?: string): Promise<BatchDescribeResponse> => {
       const params = apiVersion ? `?api_version=${encodeURIComponent(apiVersion)}` : '';
       return fetchJson(`/api/objects/describe${params}`, {
+        method: 'POST',
+        body: JSON.stringify({ object_names: objectNames }),
+      });
+    },
+
+    /** Get enrichment data (OWD, record counts) for objects */
+    getObjectEnrichment: (objectNames: string[], apiVersion?: string): Promise<ObjectEnrichmentResponse> => {
+      const params = apiVersion ? `?api_version=${encodeURIComponent(apiVersion)}` : '';
+      return fetchJson(`/api/objects/enrichment${params}`, {
         method: 'POST',
         body: JSON.stringify({ object_names: objectNames }),
       });

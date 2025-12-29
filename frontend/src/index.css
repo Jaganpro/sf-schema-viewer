@@ -143,6 +143,17 @@
     stroke-width: 3;
   }
 
+  /* Edge animation - marching ants effect */
+  @keyframes dash-march {
+    to {
+      stroke-dashoffset: -18; /* Sum of dasharray (6 + 3) × 2 for smooth loop */
+    }
+  }
+
+  .relationship-edge.animated {
+    animation: dash-march 0.8s linear infinite;
+  }
+
   /* Edge Labels */
   .edge-label {
     position: absolute;

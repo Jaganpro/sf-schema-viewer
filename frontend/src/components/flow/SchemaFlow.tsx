@@ -22,6 +22,7 @@ import {
   Loader2,
   X,
   ChevronUp,
+  Settings,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ import { cn } from '@/lib/utils';
 import ObjectNode from './ObjectNode';
 import type { ObjectNodeData } from './ObjectNode';
 import SmartEdge, { EdgeMarkerDefs } from './SmartEdge';
+import { SettingsDropdown } from './SettingsDropdown';
 import { useAppStore } from '../../store';
 
 // Register custom node and edge types
@@ -49,6 +51,8 @@ export default function SchemaFlow() {
     selectedObjectNames,
     showLegend,
     toggleLegend,
+    showSettingsDropdown,
+    toggleSettingsDropdown,
   } = useAppStore();
 
   // Compact mode state
@@ -225,6 +229,25 @@ export default function SchemaFlow() {
             <Focus className="h-4 w-4" />
             Fit View
           </button>
+
+          {/* Settings button with dropdown */}
+          <div className="relative">
+            <button
+              data-settings-button
+              onClick={toggleSettingsDropdown}
+              className={cn(
+                'bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]',
+                showSettingsDropdown
+                  ? 'bg-sf-blue border-sf-blue text-white hover:bg-sf-blue-dark'
+                  : 'text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue'
+              )}
+              title="Badge display settings"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </button>
+            {showSettingsDropdown && <SettingsDropdown />}
+          </div>
         </Panel>
 
         {/* Empty state - true center, compact size */}
@@ -337,10 +360,10 @@ export default function SchemaFlow() {
           ) : (
             <button
               onClick={toggleLegend}
-              className="bg-white border border-gray-200 rounded-sm px-3 py-2 shadow-md text-xs text-sf-text hover:bg-gray-50 flex items-center gap-1.5 transition-colors"
+              className="bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue transition-all active:scale-[0.98]"
               title="Show legend"
             >
-              <ChevronUp className="h-3.5 w-3.5" />
+              <ChevronUp className="h-4 w-4" />
               Legend
             </button>
           )}

@@ -284,6 +284,22 @@ export interface ApiVersionInfo {
   url: string;      // e.g., "/services/data/v62.0"
 }
 
+// ============================================================================
+// Object Enrichment Types (OWD, Record Counts)
+// ============================================================================
+
+export interface ObjectEnrichmentInfo {
+  internal_sharing: string | null;  // e.g., "Private", "Read", "ReadWrite"
+  external_sharing: string | null;  // e.g., "Private", "Read"
+  record_count: number | null;      // Approximate record count
+  is_ldv: boolean;                  // True if record_count >= 5,000,000
+}
+
+export interface ObjectEnrichmentResponse {
+  enrichments: Record<string, ObjectEnrichmentInfo>;
+  errors?: Record<string, string>;
+}
+
 // Re-export component types for convenience
 export type { ObjectNodeData, ObjectNodeType } from '../components/flow/ObjectNode';
 export type { RelationshipEdgeData, RelationshipEdgeType } from '../components/flow/SmartEdge';

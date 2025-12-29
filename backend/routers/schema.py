@@ -14,6 +14,9 @@ from models.schema import (
     BatchDescribeResponse,
     ObjectBasicInfo,
     ObjectDescribe,
+    ObjectEnrichmentInfo,
+    ObjectEnrichmentRequest,
+    ObjectEnrichmentResponse,
 )
 from services.salesforce import SalesforceService
 from services.session import Session, session_store
@@ -129,3 +132,59 @@ async def describe_objects(
         raise SalesforceAPIError(detail=f"Failed to describe objects: {str(e)}")
     except Exception as e:
         raise SalesforceAPIError(detail=f"Unexpected error describing objects: {str(e)}")
+
+
+# LDV threshold: 5 million records
+LDV_THRESHOLD = 5_000_000
+
+
+@router.post("/objects/enrichment", response_model=ObjectEnrichmentResponse)
+async def get_object_enrichment(
+    request: ObjectEnrichmentRequest,
+    api_version: str | None = Query(
+        None, description="Salesforce API version (e.g., v62.0)"
+    ),
+    session: Session = Depends(get_current_session),
+):
+    """Get enrichment data (OWD sharing settings and record counts) for objects.
+
+    This endpoint fetches additional metadata not available in standard describe:
+    - Organization-Wide Defaults (OWD) sharing settings from Tooling API
+    - Approximate record counts to identify Large Data Volume (LDV) objects
+
+    Both data sources are fetched and errors are handled gracefully - if one
+    fails, the other will still be returned.
+    """
+    try:
+        sf = get_sf_service(session, api_version)
+
+        # Fetch both data sources (these handle their own errors internally)
+        sharing_settings = sf.get_sharing_settings(request.object_names)
+        record_counts = sf.get_record_counts(request.object_names)
+
+        # Combine into enrichment response
+        enrichments = {}
+        errors = {}
+
+        for obj_name in request.object_names:
+            sharing = sharing_settings.get(obj_name, {})
+            count = record_counts.get(obj_name)
+
+            enrichments[obj_name] = ObjectEnrichmentInfo(
+                internal_sharing=sharing.get("internal"),
+                external_sharing=sharing.get("external"),
+                record_count=count,
+                is_ldv=count is not None and count >= LDV_THRESHOLD,
+            )
+
+        return ObjectEnrichmentResponse(
+            enrichments=enrichments,
+            errors=errors if errors else None,
+        )
+
+    except SalesforceError as e:
+        raise SalesforceAPIError(detail=f"Failed to get enrichment data: {str(e)}")
+    except Exception as e:
+        raise SalesforceAPIError(
+            detail=f"Unexpected error getting enrichment data: {str(e)}"
+        )

@@ -244,3 +244,25 @@ class ApiVersionInfo(BaseModel):
     version: str  # e.g., "62.0"
     label: str  # e.g., "Winter '25"
     url: str  # e.g., "/services/data/v62.0"
+
+
+class ObjectEnrichmentRequest(BaseModel):
+    """Request to get enrichment data (OWD, record counts) for objects."""
+
+    object_names: list[str]
+
+
+class ObjectEnrichmentInfo(BaseModel):
+    """Enrichment data for a single object (OWD + record count)."""
+
+    internal_sharing: str | None = None  # e.g., "Private", "Read", "ReadWrite"
+    external_sharing: str | None = None  # e.g., "Private", "Read"
+    record_count: int | None = None  # Approximate record count
+    is_ldv: bool = False  # True if record_count >= 5,000,000
+
+
+class ObjectEnrichmentResponse(BaseModel):
+    """Response containing enrichment data for multiple objects."""
+
+    enrichments: dict[str, ObjectEnrichmentInfo]  # Object name -> enrichment data
+    errors: dict[str, str] | None = None  # Object name -> error message

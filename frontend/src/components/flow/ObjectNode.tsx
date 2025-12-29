@@ -3,12 +3,31 @@
  * Pill-style: light background, dark border & text, uppercase label.
  */
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, useEffect } from 'react';
 import { Handle, Position, type Node, NodeResizer, useReactFlow } from '@xyflow/react';
-import { CircleDot, Trash2 } from 'lucide-react';
+import { CircleDot, ListTree, Trash2 } from 'lucide-react';
 import type { FieldInfo } from '../../types/schema';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '../../store';
+
+// Color coding for OWD (Organization-Wide Defaults) badges
+const owdColors: Record<string, string> = {
+  Private: 'bg-red-100 text-red-700 border-red-200',
+  Read: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  ReadWrite: 'bg-green-100 text-green-700 border-green-200',
+  ReadWriteTransfer: 'bg-green-100 text-green-700 border-green-200',
+  ControlledByParent: 'bg-blue-100 text-blue-700 border-blue-200',
+  ControlledByCampaign: 'bg-blue-100 text-blue-700 border-blue-200',
+  ControlledByLeadOrContact: 'bg-blue-100 text-blue-700 border-blue-200',
+  FullAccess: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+};
+
+// Format large numbers: 5,200,000 → "5.2M"
+const formatCount = (count: number): string => {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${Math.round(count / 1_000)}K`;
+  return count.toString();
+};
 
 // Define the data structure for ObjectNode
 export interface ObjectNodeData {
@@ -35,12 +54,37 @@ interface ObjectNodeProps {
 function ObjectNode({ data, selected, id }: ObjectNodeProps) {
   const { getEdges, getNode } = useReactFlow();
   const [isHovered, setIsHovered] = useState(false);
+  const [isToolbarHovered, setIsToolbarHovered] = useState(false);
   const removeObject = useAppStore((state) => state.removeObject);
+  const setFocusedObject = useAppStore((state) => state.setFocusedObject);
+
+  // Enrichment state (OWD, record counts)
+  const objectEnrichment = useAppStore((state) => state.objectEnrichment);
+  const enrichmentLoading = useAppStore((state) => state.enrichmentLoading);
+  const fetchObjectEnrichment = useAppStore((state) => state.fetchObjectEnrichment);
+  const badgeSettings = useAppStore((state) => state.badgeSettings);
+
+  // Get enrichment data for this object
+  const enrichment = objectEnrichment.get(data.apiName);
+  const isLoading = enrichmentLoading.has(data.apiName);
+
+  // Trigger enrichment fetch when node mounts (if not already loaded)
+  useEffect(() => {
+    if (!enrichment && !isLoading) {
+      fetchObjectEnrichment([data.apiName]);
+    }
+  }, [data.apiName, enrichment, isLoading, fetchObjectEnrichment]);
 
   // Handle delete button click
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent node selection
     removeObject(data.apiName);
+  };
+
+  // Handle opening object detail panel
+  const handleOpenDetail = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent node selection
+    setFocusedObject(data.apiName);
   };
 
   // Calculate edges per side for dynamic height
@@ -129,6 +173,63 @@ function ObjectNode({ data, selected, id }: ObjectNodeProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Top Badges - OWD indicators (stacked vertically above node) */}
+      <div className="absolute bottom-full left-0 mb-2 flex flex-col gap-1 z-10 pointer-events-none">
+        {/* Loading shimmer - only show if any OWD badge is enabled */}
+        {isLoading && (badgeSettings.showInternalSharing || badgeSettings.showExternalSharing) && (
+          <div className="h-5 w-24 bg-gray-200 rounded animate-pulse" />
+        )}
+
+        {/* Internal OWD Badge */}
+        {!isLoading && badgeSettings.showInternalSharing && enrichment?.internal_sharing && (
+          <span
+            className={cn(
+              'px-2 py-0.5 text-[10px] font-medium rounded shadow-sm border whitespace-nowrap',
+              owdColors[enrichment.internal_sharing] || 'bg-gray-100 text-gray-700 border-gray-200'
+            )}
+            title={`Internal Sharing: ${enrichment.internal_sharing}`}
+          >
+            OWD: {enrichment.internal_sharing}
+          </span>
+        )}
+
+        {/* External OWD Badge */}
+        {!isLoading && badgeSettings.showExternalSharing && enrichment?.external_sharing && (
+          <span
+            className={cn(
+              'px-2 py-0.5 text-[10px] font-medium rounded shadow-sm border whitespace-nowrap',
+              owdColors[enrichment.external_sharing] || 'bg-gray-100 text-gray-700 border-gray-200'
+            )}
+            title={`External Sharing: ${enrichment.external_sharing}`}
+          >
+            Ext: {enrichment.external_sharing}
+          </span>
+        )}
+      </div>
+
+      {/* Bottom Badge - Record Count (below node) */}
+      <div className="absolute -bottom-7 left-0 flex gap-1.5 z-10 pointer-events-none">
+        {/* Loading shimmer for record count */}
+        {isLoading && badgeSettings.showRecordCount && (
+          <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
+        )}
+
+        {/* Record Count Badge - shows for ALL objects, with [LDV] suffix for large volumes */}
+        {!isLoading && badgeSettings.showRecordCount && enrichment?.record_count !== null && enrichment?.record_count !== undefined && (
+          <span
+            className={cn(
+              'px-2 py-0.5 text-[10px] font-medium rounded shadow-sm border whitespace-nowrap',
+              enrichment.is_ldv
+                ? 'bg-orange-100 text-orange-700 border-orange-200'
+                : 'bg-blue-100 text-blue-700 border-blue-200'
+            )}
+            title={`${enrichment.record_count.toLocaleString()} records${enrichment.is_ldv ? ' (Large Data Volume)' : ''}`}
+          >
+            Count: {formatCount(enrichment.record_count)}{enrichment.is_ldv ? ' [LDV]' : ''}
+          </span>
+        )}
+      </div>
+
       {/* Resize handles - only visible when selected */}
       <NodeResizer
         minWidth={160}
@@ -258,17 +359,33 @@ function ObjectNode({ data, selected, id }: ObjectNodeProps) {
         </div>
       )}
 
-      {/* Hover Toolbar - Delete button (hidden when selected to avoid resize handle conflict) */}
-      {isHovered && !selected && (
-        <div className="absolute -top-3 -right-3 z-20 flex gap-1">
+      {/* Hover Toolbar - Right side, shows on hover OR toolbar hover OR selected */}
+      {(isHovered || isToolbarHovered || selected) && (
+        <div
+          className="absolute top-2 -right-12 z-20 flex flex-col gap-1.5"
+          onMouseEnter={() => setIsToolbarHovered(true)}
+          onMouseLeave={() => setIsToolbarHovered(false)}
+        >
+          {/* Object Detail button */}
+          <button
+            onClick={handleOpenDetail}
+            className="p-2 rounded-lg bg-white border border-gray-200 shadow-md
+                       hover:bg-sf-blue hover:border-sf-blue hover:text-white
+                       text-sf-blue transition-colors duration-150 cursor-pointer"
+            title="View object details"
+          >
+            <ListTree size={18} />
+          </button>
+
+          {/* Delete button */}
           <button
             onClick={handleDelete}
-            className="p-1.5 rounded-full bg-white border border-gray-200 shadow-md
-                       hover:bg-red-50 hover:border-red-300 hover:text-red-600
-                       text-gray-500 transition-colors duration-150"
+            className="p-2 rounded-lg bg-white border border-gray-200 shadow-md
+                       hover:bg-red-500 hover:border-red-500 hover:text-white
+                       text-red-500 transition-colors duration-150 cursor-pointer"
             title="Remove from diagram"
           >
-            <Trash2 size={14} />
+            <Trash2 size={18} />
           </button>
         </div>
       )}

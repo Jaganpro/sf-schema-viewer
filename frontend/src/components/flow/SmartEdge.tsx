@@ -12,6 +12,7 @@ import {
   type EdgeProps,
   Position,
 } from '@xyflow/react';
+import { useAppStore } from '../../store';
 
 // Edge data type
 export interface SmartEdgeData {
@@ -40,6 +41,8 @@ function SmartEdge({
   selected,
 }: SmartEdgeProps) {
   const { getNode, getEdges } = useReactFlow();
+  const animateEdges = useAppStore((state) => state.badgeSettings.animateEdges);
+  const showEdgeLabels = useAppStore((state) => state.badgeSettings.showEdgeLabels);
 
   // Get actual node data for position calculations
   const sourceNode = getNode(source);
@@ -306,7 +309,7 @@ function SmartEdge({
       {/* Main edge path */}
       <path
         id={id}
-        className={`relationship-edge ${isMasterDetail ? 'master-detail' : 'lookup'} ${selected ? 'selected' : ''}`}
+        className={`relationship-edge ${isMasterDetail ? 'master-detail' : 'lookup'} ${selected ? 'selected' : ''} ${animateEdges ? 'animated' : ''}`}
         d={edgePath}
         markerEnd={`url(#${isMasterDetail ? 'arrow-filled' : 'arrow-hollow'})`}
       />
@@ -338,15 +341,17 @@ function SmartEdge({
           </>
         )}
 
-        {/* Field name label */}
-        <div
-          className={`edge-label ${isMasterDetail ? 'master-detail' : 'lookup'} ${selected ? 'selected' : ''}`}
-          style={{
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-          }}
-        >
-          <span className="field-name">{data?.fieldName}</span>
-        </div>
+        {/* Field name label - conditionally shown based on settings */}
+        {showEdgeLabels && (
+          <div
+            className={`edge-label ${isMasterDetail ? 'master-detail' : 'lookup'} ${selected ? 'selected' : ''}`}
+            style={{
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            }}
+          >
+            <span className="field-name">{data?.fieldName}</span>
+          </div>
+        )}
       </EdgeLabelRenderer>
     </>
   );

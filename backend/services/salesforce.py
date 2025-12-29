@@ -2,6 +2,8 @@
 
 from threading import Lock
 
+import urllib.parse
+
 import httpx
 from cachetools import TTLCache
 from simple_salesforce import Salesforce
@@ -428,3 +430,84 @@ class SalesforceService:
         versions.sort(key=lambda x: float(x.version), reverse=True)
         # Return only last 3 years of releases (3 releases/year × 3 years = 9 versions)
         return versions[:9]
+
+    def get_sharing_settings(self, object_names: list[str]) -> dict[str, dict]:
+        """Fetch Organization-Wide Default (OWD) sharing settings via Tooling API.
+
+        Queries EntityDefinition for InternalSharingModel and ExternalSharingModel.
+
+        Args:
+            object_names: List of object API names (e.g., ["Account", "Contact"])
+
+        Returns:
+            Dict mapping object name to sharing info:
+            {
+                "Account": {"internal": "Private", "external": "Private"},
+                "Contact": {"internal": "ControlledByParent", "external": "ControlledByParent"}
+            }
+        """
+        if not object_names:
+            return {}
+
+        # Build SOQL query for Tooling API
+        names_str = "', '".join(object_names)
+        query = f"""
+            SELECT QualifiedApiName, InternalSharingModel, ExternalSharingModel
+            FROM EntityDefinition
+            WHERE QualifiedApiName IN ('{names_str}')
+        """
+
+        try:
+            # Use Tooling API query endpoint
+            encoded_query = urllib.parse.quote(query.strip())
+            result = self.sf.toolingexecute(f"query?q={encoded_query}")
+
+            sharing_settings = {}
+            for record in result.get("records", []):
+                obj_name = record.get("QualifiedApiName")
+                if obj_name:
+                    sharing_settings[obj_name] = {
+                        "internal": record.get("InternalSharingModel"),
+                        "external": record.get("ExternalSharingModel"),
+                    }
+
+            return sharing_settings
+
+        except Exception as e:
+            # Log error but don't fail - sharing settings are optional enrichment
+            print(f"Warning: Failed to get sharing settings: {e}")
+            return {}
+
+    def get_record_counts(self, object_names: list[str]) -> dict[str, int]:
+        """Fetch approximate record counts via REST API limits/recordCount.
+
+        Args:
+            object_names: List of object API names (e.g., ["Account", "Contact"])
+
+        Returns:
+            Dict mapping object name to record count:
+            {"Account": 12500000, "Contact": 8750000}
+        """
+        if not object_names:
+            return {}
+
+        try:
+            # Build comma-separated list of objects
+            objects_param = ",".join(object_names)
+            endpoint = f"limits/recordCount?sObjects={objects_param}"
+
+            result = self.sf.restful(endpoint)
+
+            record_counts = {}
+            for obj in result.get("sObjects", []):
+                obj_name = obj.get("name")
+                count = obj.get("count", 0)
+                if obj_name:
+                    record_counts[obj_name] = count
+
+            return record_counts
+
+        except Exception as e:
+            # Log error but don't fail - record counts are optional enrichment
+            print(f"Warning: Failed to get record counts: {e}")
+            return {}
