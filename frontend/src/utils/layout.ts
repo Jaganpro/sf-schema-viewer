@@ -5,6 +5,7 @@
 import dagre from '@dagrejs/dagre';
 import type { Node, Edge } from '@xyflow/react';
 import type { ObjectNodeData, RelationshipEdgeData } from '../types/schema';
+import { calculateEdgeCountsPerNode, calculateDynamicHeight } from './layoutHelpers';
 
 interface LayoutOptions {
   direction: 'TB' | 'LR' | 'BT' | 'RL';
@@ -32,6 +33,10 @@ export function applyDagreLayout(
 ): { nodes: Node<ObjectNodeData>[]; edges: Edge<RelationshipEdgeData>[] } {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
+  // Pre-calculate edge counts to determine dynamic node heights
+  // This ensures Dagre spaces nodes correctly based on their actual sizes
+  const edgeCounts = calculateEdgeCountsPerNode(edges);
+
   // Create a new directed graph
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
@@ -44,15 +49,22 @@ export function applyDagreLayout(
     marginy: 20,
   });
 
-  // Add nodes to the graph
+  // Add nodes to the graph with DYNAMIC heights based on edge count
   for (const node of nodes) {
-    // Estimate node height based on number of fields (if not collapsed)
+    // Base height from field count (if not collapsed)
     const fieldCount = node.data.collapsed ? 0 : Math.min(node.data.fields.length, 10);
-    const estimatedHeight = 60 + fieldCount * 28;
+    const fieldBasedHeight = 60 + fieldCount * 28;
+
+    // Get edge-based height for this node (accounts for edge distribution)
+    const nodeEdgeCounts = edgeCounts.get(node.id) || { left: 0, right: 0, top: 0, bottom: 0 };
+    const edgeBasedHeight = calculateDynamicHeight(nodeEdgeCounts);
+
+    // Use the larger of field-based or edge-based height
+    const dynamicHeight = Math.max(fieldBasedHeight, edgeBasedHeight);
 
     g.setNode(node.id, {
       width: opts.nodeWidth,
-      height: Math.min(estimatedHeight, opts.nodeHeight),
+      height: Math.min(dynamicHeight, opts.nodeHeight),
     });
   }
 

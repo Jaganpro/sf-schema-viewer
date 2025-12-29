@@ -324,8 +324,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       removeChildRelationship(objectName, key);
       removeObject(rel.child_object);
     } else {
-      // Checking - add to selection and diagram
-      addChildRelationship(objectName, key);
+      // Checking - add to selection and diagram (pass cascade_delete for accurate MD/Lookup type)
+      addChildRelationship(objectName, key, rel.cascade_delete);
       if (isChildAlreadyInDiagram) {
         // Object already in diagram - just refresh edges to show new relationship
         refreshEdges();
@@ -352,9 +352,9 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
       // Single batch API call - no race conditions!
       selectObjects(allObjectNames);
 
-      // Add all visible relationships to store for edge filtering
+      // Add all visible relationships to store for edge filtering (pass cascade_delete for accurate type)
       filteredRelationships.forEach((rel) => {
-        addChildRelationship(objectName, getRelKey(rel));
+        addChildRelationship(objectName, getRelKey(rel), rel.cascade_delete);
       });
     }
   };

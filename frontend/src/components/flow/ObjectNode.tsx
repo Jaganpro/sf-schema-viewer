@@ -3,11 +3,12 @@
  * Pill-style: light background, dark border & text, uppercase label.
  */
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Handle, Position, type Node, NodeResizer, useReactFlow } from '@xyflow/react';
-import { CircleDot } from 'lucide-react';
+import { CircleDot, Trash2 } from 'lucide-react';
 import type { FieldInfo } from '../../types/schema';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '../../store';
 
 // Define the data structure for ObjectNode
 export interface ObjectNodeData {
@@ -33,6 +34,14 @@ interface ObjectNodeProps {
 
 function ObjectNode({ data, selected, id }: ObjectNodeProps) {
   const { getEdges, getNode } = useReactFlow();
+  const [isHovered, setIsHovered] = useState(false);
+  const removeObject = useAppStore((state) => state.removeObject);
+
+  // Handle delete button click
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent node selection
+    removeObject(data.apiName);
+  };
 
   // Calculate edges per side for dynamic height
   const edgeCounts = useMemo(() => {
@@ -108,7 +117,7 @@ function ObjectNode({ data, selected, id }: ObjectNodeProps) {
   return (
     <div
       className={cn(
-        'w-full h-full flex flex-col border rounded font-mono text-xs overflow-hidden transition-[box-shadow,border-color] duration-200',
+        'w-full h-full flex flex-col border rounded font-mono text-xs transition-[box-shadow,border-color] duration-200 relative',
         pillColors.bg,
         pillColors.border,
         selected
@@ -117,6 +126,8 @@ function ObjectNode({ data, selected, id }: ObjectNodeProps) {
         'group'
       )}
       style={{ minHeight: dynamicMinHeight }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Resize handles - only visible when selected */}
       <NodeResizer
@@ -244,6 +255,21 @@ function ObjectNode({ data, selected, id }: ObjectNodeProps) {
           ) : (
             null
           )}
+        </div>
+      )}
+
+      {/* Hover Toolbar - Delete button (hidden when selected to avoid resize handle conflict) */}
+      {isHovered && !selected && (
+        <div className="absolute -top-3 -right-3 z-20 flex gap-1">
+          <button
+            onClick={handleDelete}
+            className="p-1.5 rounded-full bg-white border border-gray-200 shadow-md
+                       hover:bg-red-50 hover:border-red-300 hover:text-red-600
+                       text-gray-500 transition-colors duration-150"
+            title="Remove from diagram"
+          >
+            <Trash2 size={14} />
+          </button>
         </div>
       )}
     </div>

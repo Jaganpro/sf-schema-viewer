@@ -17,12 +17,14 @@ type RelationshipType = 'lookup' | 'master-detail';
  * @param selectedObjects - Names of objects currently in the ERD
  * @param selectedFieldsByObject - Map of object name to selected field names (for filtering)
  * @param selectedChildRelsByParent - Map of parent object to selected child relationships (for edge filtering)
+ * @param relationshipTypeOverrides - Map of "ChildObject.FieldName" to cascade_delete boolean (for accurate MD/Lookup)
  */
 export function transformToFlowElements(
   describes: ObjectDescribe[],
   selectedObjects: string[],
   selectedFieldsByObject?: Map<string, Set<string>>,
-  selectedChildRelsByParent?: Map<string, Set<string>>
+  selectedChildRelsByParent?: Map<string, Set<string>>,
+  relationshipTypeOverrides?: Map<string, boolean>
 ): { nodes: Node<ObjectNodeData>[]; edges: Edge<RelationshipEdgeData>[] } {
   const selectedSet = new Set(selectedObjects);
   const nodes: Node<ObjectNodeData>[] = [];
@@ -86,8 +88,13 @@ export function transformToFlowElements(
         }
 
         // Determine relationship type
+        // Priority: 1) Override from child relationships (cascade_delete), 2) Field's relationship_order
+        // Note: relationshipKey already defined above for filtering
+        const cascadeDeleteOverride = relationshipTypeOverrides?.get(relationshipKey);
         const relationshipType: RelationshipType =
-          field.relationship_order === 1 ? 'master-detail' : 'lookup';
+          cascadeDeleteOverride !== undefined
+            ? (cascadeDeleteOverride ? 'master-detail' : 'lookup')  // Use authoritative cascade_delete
+            : (field.relationship_order === 1 ? 'master-detail' : 'lookup');  // Fallback to field's value
 
         edges.push({
           id: `${describe.name}-${field.name}-${targetObject}`,

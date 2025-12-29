@@ -120,6 +120,11 @@ interface AppState {
   // Used to filter edges when objects are added via child relationships tab
   selectedChildRelsByParent: Map<string, Set<string>>;
 
+  // Relationship type overrides - stores cascade_delete from child relationships
+  // Key: "ChildObject.FieldName", Value: cascade_delete boolean (true = master-detail)
+  // Used to determine accurate MD/Lookup type in diagram (fixes divergence with panel badge)
+  relationshipTypeByKey: Map<string, boolean>;
+
   // Error state
   error: string | null;
 
@@ -157,7 +162,7 @@ interface AppState {
   refreshNodeFields: (objectName: string) => void;  // Update node fields without re-layout
   toggleNodeCollapse: (nodeId: string) => void;
   // Child relationship selection actions
-  addChildRelationship: (parentObject: string, relationshipKey: string) => void;
+  addChildRelationship: (parentObject: string, relationshipKey: string, cascadeDelete: boolean) => void;
   removeChildRelationship: (parentObject: string, relationshipKey: string) => void;
   clearChildRelationships: (parentObject: string) => void;
   refreshEdges: () => void;  // Recalculate edges only (preserves node positions)
@@ -200,6 +205,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   advancedFiltersExpanded: false,  // Default collapsed
   selectedFieldsByObject: new Map(),
   selectedChildRelsByParent: new Map(),  // Tracks child relationships for edge filtering
+  relationshipTypeByKey: new Map(),  // Tracks cascade_delete for accurate MD/Lookup rendering
   error: null,
 
   // Actions
@@ -464,26 +470,58 @@ export const useAppStore = create<AppState>((set, get) => ({
       .map((n) => newDescribedObjects.get(n))
       .filter((d): d is ObjectDescribe => d !== undefined);
 
-    // Transform to get new nodes and edges (with field selection and child relationship filtering)
-    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent);
+    // Transform to get new nodes and edges (with field selection, child relationship filtering, and type overrides)
+    const { relationshipTypeByKey } = get();
+    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey);
 
     // Preserve existing node positions, only position new nodes
     const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
 
-    // Calculate position for new node (place it to the right of existing nodes)
-    let maxX = 0;
-    let avgY = 0;
-    if (nodes.length > 0) {
+    // Smart positioning: Find which existing objects the new node connects to
+    const connectedNodeIds = new Set<string>();
+    for (const edge of newEdges) {
+      // New node is the source, target is an existing node
+      if (edge.source === name && existingPositions.has(edge.target)) {
+        connectedNodeIds.add(edge.target);
+      }
+      // New node is the target, source is an existing node
+      if (edge.target === name && existingPositions.has(edge.source)) {
+        connectedNodeIds.add(edge.source);
+      }
+    }
+
+    // Calculate position based on connected nodes (relationship-aware)
+    let newX: number;
+    let newY: number;
+
+    if (connectedNodeIds.size > 0 && nodes.length > 0) {
+      // Position near the center of connected nodes + offset to the right
+      const connectedNodes = nodes.filter(n => connectedNodeIds.has(n.id));
+      const avgX = connectedNodes.reduce((sum, n) => sum + n.position.x, 0) / connectedNodes.length;
+      const avgY = connectedNodes.reduce((sum, n) => sum + n.position.y, 0) / connectedNodes.length;
+
+      // Offset to the right of connected cluster (avoids overlap)
+      newX = avgX + 350;
+      newY = avgY;
+    } else if (nodes.length > 0) {
+      // No connections - fallback to placing to the right of all existing nodes
+      let maxX = 0;
+      let sumY = 0;
       nodes.forEach(n => {
         maxX = Math.max(maxX, n.position.x + 300); // 300 = approximate node width + gap
-        avgY += n.position.y;
+        sumY += n.position.y;
       });
-      avgY = avgY / nodes.length;
+      newX = maxX;
+      newY = sumY / nodes.length;
+    } else {
+      // First node - center position
+      newX = 100;
+      newY = 100;
     }
 
     const mergedNodes = newNodes.map(node => ({
       ...node,
-      position: existingPositions.get(node.id) ?? { x: maxX, y: avgY },
+      position: existingPositions.get(node.id) ?? { x: newX, y: newY },
     }));
 
     set({ nodes: mergedNodes, edges: newEdges });
@@ -514,8 +552,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    // Transform to get updated nodes and edges (with field selection and child relationship filtering)
-    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, newFieldSelections, newChildRels);
+    // Transform to get updated nodes and edges (with field selection, child relationship filtering, and type overrides)
+    const { relationshipTypeByKey } = get();
+    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, newFieldSelections, newChildRels, relationshipTypeByKey);
 
     // Preserve existing node positions
     const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
@@ -528,7 +567,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   applyLayout: () => {
-    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent } = get();
+    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey } = get();
 
     // Get describes for selected objects
     const describes = selectedObjectNames
@@ -540,8 +579,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    // Transform to React Flow elements (pass field selection and child relationship filtering)
-    const { nodes, edges } = transformToFlowElements(describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent);
+    // Transform to React Flow elements (pass field selection, child relationship filtering, and type overrides)
+    const { nodes, edges } = transformToFlowElements(describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey);
 
     // Apply Dagre layout
     const layouted = applyDagreLayout(nodes, edges);
@@ -807,14 +846,19 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Child relationship selection actions
   // These track which specific relationships were selected to filter edges
-  addChildRelationship: (parentObject: string, relationshipKey: string) => {
+  addChildRelationship: (parentObject: string, relationshipKey: string, cascadeDelete: boolean) => {
     set((state) => {
       const newMap = new Map(state.selectedChildRelsByParent);
       const currentSet = newMap.get(parentObject) ?? new Set<string>();
       const newSet = new Set(currentSet);
       newSet.add(relationshipKey);
       newMap.set(parentObject, newSet);
-      return { selectedChildRelsByParent: newMap };
+
+      // Also store the cascade_delete for accurate MD/Lookup type in diagram
+      const newTypeMap = new Map(state.relationshipTypeByKey);
+      newTypeMap.set(relationshipKey, cascadeDelete);
+
+      return { selectedChildRelsByParent: newMap, relationshipTypeByKey: newTypeMap };
     });
   },
 
@@ -831,22 +875,37 @@ export const useAppStore = create<AppState>((set, get) => ({
           newMap.set(parentObject, newSet);
         }
       }
-      return { selectedChildRelsByParent: newMap };
+
+      // Also remove from type override map
+      const newTypeMap = new Map(state.relationshipTypeByKey);
+      newTypeMap.delete(relationshipKey);
+
+      return { selectedChildRelsByParent: newMap, relationshipTypeByKey: newTypeMap };
     });
   },
 
   clearChildRelationships: (parentObject: string) => {
     set((state) => {
       const newMap = new Map(state.selectedChildRelsByParent);
+      const relKeys = newMap.get(parentObject);
       newMap.delete(parentObject);
-      return { selectedChildRelsByParent: newMap };
+
+      // Also remove type overrides for all relationships of this parent
+      const newTypeMap = new Map(state.relationshipTypeByKey);
+      if (relKeys) {
+        for (const key of relKeys) {
+          newTypeMap.delete(key);
+        }
+      }
+
+      return { selectedChildRelsByParent: newMap, relationshipTypeByKey: newTypeMap };
     });
   },
 
   // Recalculate edges only, preserving node positions
   // Used when child relationships change but objects stay the same
   refreshEdges: () => {
-    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent } = get();
+    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey } = get();
 
     const describes = selectedObjectNames
       .map((name) => describedObjects.get(name))
@@ -854,9 +913,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     if (describes.length === 0) return;
 
-    // Only recalculate edges, keep existing nodes with positions
+    // Only recalculate edges, keep existing nodes with positions (pass type overrides for accurate MD/Lookup)
     const { edges: newEdges } = transformToFlowElements(
-      describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent
+      describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey
     );
 
     set({ edges: newEdges });
@@ -873,6 +932,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedObjectNames: [],
       selectedFieldsByObject: new Map(),
       selectedChildRelsByParent: new Map(),
+      relationshipTypeByKey: new Map(),  // Also clear type overrides
       focusedObjectName: null,
       nodes: [],
       edges: [],
@@ -923,13 +983,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ selectedObjectNames: newSelectedObjects });
 
     // Get updated describedObjects and transform to flow elements
-    const { describedObjects: updatedDescribed, selectedFieldsByObject, selectedChildRelsByParent } = get();
+    const { describedObjects: updatedDescribed, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey } = get();
     const describes = newSelectedObjects
       .map(name => updatedDescribed.get(name))
       .filter((d): d is ObjectDescribe => d !== undefined);
 
     const { nodes: newNodes, edges: newEdges } = transformToFlowElements(
-      describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent
+      describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey
     );
 
     // Set nodes/edges then apply Dagre auto-layout for relationship-aware positioning
