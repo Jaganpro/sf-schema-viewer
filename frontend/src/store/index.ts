@@ -84,6 +84,7 @@ export interface BadgeDisplaySettings {
   animateEdges: boolean;          // Animate relationship lines (marching ants effect)
   showEdgeLabels: boolean;        // Show field name labels on relationship lines
   compactMode: boolean;           // Hide field lists on nodes for cleaner overview
+  showAllConnections: boolean;    // Show all edges between object pairs (vs single representative)
 }
 
 /** Default badge settings - show internal sharing, record counts, animation, and edge labels by default */
@@ -94,6 +95,7 @@ const DEFAULT_BADGE_SETTINGS: BadgeDisplaySettings = {
   animateEdges: true,
   showEdgeLabels: true,
   compactMode: false,
+  showAllConnections: false,  // Default: single edge for cleaner diagrams
 };
 
 interface AppState {
@@ -517,8 +519,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       .filter((d): d is ObjectDescribe => d !== undefined);
 
     // Transform to get new nodes and edges (with field selection, child relationship filtering, and type overrides)
-    const { relationshipTypeByKey } = get();
-    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey);
+    const { relationshipTypeByKey, badgeSettings } = get();
+    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey, badgeSettings.showAllConnections);
 
     // Preserve existing node positions, only position new nodes
     const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
@@ -599,8 +601,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     // Transform to get updated nodes and edges (with field selection, child relationship filtering, and type overrides)
-    const { relationshipTypeByKey } = get();
-    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, newFieldSelections, newChildRels, relationshipTypeByKey);
+    const { relationshipTypeByKey, badgeSettings } = get();
+    const { nodes: newNodes, edges: newEdges } = transformToFlowElements(describes, newSelectedObjects, newFieldSelections, newChildRels, relationshipTypeByKey, badgeSettings.showAllConnections);
 
     // Preserve existing node positions
     const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
@@ -613,7 +615,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   applyLayout: () => {
-    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey } = get();
+    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey, badgeSettings } = get();
 
     // Get describes for selected objects
     const describes = selectedObjectNames
@@ -626,7 +628,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     // Transform to React Flow elements (pass field selection, child relationship filtering, and type overrides)
-    const { nodes, edges } = transformToFlowElements(describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey);
+    const { nodes, edges } = transformToFlowElements(describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey, badgeSettings.showAllConnections);
 
     // Apply Dagre layout
     const layouted = applyDagreLayout(nodes, edges);
@@ -951,7 +953,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Recalculate edges only, preserving node positions
   // Used when child relationships change but objects stay the same
   refreshEdges: () => {
-    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey } = get();
+    const { selectedObjectNames, describedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey, badgeSettings } = get();
 
     const describes = selectedObjectNames
       .map((name) => describedObjects.get(name))
@@ -961,7 +963,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // Only recalculate edges, keep existing nodes with positions (pass type overrides for accurate MD/Lookup)
     const { edges: newEdges } = transformToFlowElements(
-      describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey
+      describes, selectedObjectNames, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey, badgeSettings.showAllConnections
     );
 
     set({ edges: newEdges });
@@ -1029,13 +1031,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ selectedObjectNames: newSelectedObjects });
 
     // Get updated describedObjects and transform to flow elements
-    const { describedObjects: updatedDescribed, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey } = get();
+    const { describedObjects: updatedDescribed, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey, badgeSettings } = get();
     const describes = newSelectedObjects
       .map(name => updatedDescribed.get(name))
       .filter((d): d is ObjectDescribe => d !== undefined);
 
     const { nodes: newNodes, edges: newEdges } = transformToFlowElements(
-      describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey
+      describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent, relationshipTypeByKey, badgeSettings.showAllConnections
     );
 
     // Set nodes/edges then apply Dagre auto-layout for relationship-aware positioning

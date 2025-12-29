@@ -18,13 +18,15 @@ type RelationshipType = 'lookup' | 'master-detail';
  * @param selectedFieldsByObject - Map of object name to selected field names (for filtering)
  * @param selectedChildRelsByParent - Map of parent object to selected child relationships (for edge filtering)
  * @param relationshipTypeOverrides - Map of "ChildObject.FieldName" to cascade_delete boolean (for accurate MD/Lookup)
+ * @param showAllConnections - If true, show all edges between object pairs instead of deduplicating
  */
 export function transformToFlowElements(
   describes: ObjectDescribe[],
   selectedObjects: string[],
   selectedFieldsByObject?: Map<string, Set<string>>,
   selectedChildRelsByParent?: Map<string, Set<string>>,
-  relationshipTypeOverrides?: Map<string, boolean>
+  relationshipTypeOverrides?: Map<string, boolean>,
+  showAllConnections?: boolean
 ): { nodes: Node<ObjectNodeData>[]; edges: Edge<RelationshipEdgeData>[] } {
   const selectedSet = new Set(selectedObjects);
   const nodes: Node<ObjectNodeData>[] = [];
@@ -127,7 +129,10 @@ export function transformToFlowElements(
     edgesByPair.get(pairKey)!.push(edge);
   }
 
-  // For each pair, keep only the primary edge (unless user explicitly selected via child rels)
+  // For each pair, decide which edges to keep based on:
+  // 1. User explicitly selected relationships via child rels panel → keep selected edges
+  // 2. showAllConnections setting is ON → keep all edges for ground truth
+  // 3. Otherwise → keep only primary edge (Master-Detail > Lookup > alphabetically)
   const dedupedEdges: Edge<RelationshipEdgeData>[] = [];
   for (const [pairKey, pairEdges] of edgesByPair) {
     const target = pairKey.split('→')[1];
@@ -137,10 +142,13 @@ export function transformToFlowElements(
     const hasExplicitSelection = targetChildRels && targetChildRels.size > 0;
 
     if (hasExplicitSelection) {
-      // User explicitly selected relationships - keep all that match
+      // User explicitly selected relationships - respect their choice
+      dedupedEdges.push(...pairEdges);
+    } else if (showAllConnections) {
+      // Setting enabled - show all edges for ground truth
       dedupedEdges.push(...pairEdges);
     } else {
-      // No explicit selection - keep only the primary edge
+      // Default: keep only the primary edge for cleaner diagrams
       // Sort: Master-Detail first (0), then Lookup (1), then alphabetically
       pairEdges.sort((a, b) => {
         const aIsMD = a.data?.relationshipType === 'master-detail' ? 0 : 1;

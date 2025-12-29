@@ -45,6 +45,7 @@ export default function SchemaFlow() {
     nodes: storeNodes,
     edges: storeEdges,
     applyLayout,
+    refreshEdges,
     isLoadingDescribe,
     selectedObjectNames,
     showLegend,
@@ -54,8 +55,9 @@ export default function SchemaFlow() {
     badgeSettings,
   } = useAppStore();
 
-  // Compact mode from settings (controls field visibility on nodes)
+  // Settings from badge display (controls various diagram behaviors)
   const compactMode = badgeSettings.compactMode;
+  const showAllConnections = badgeSettings.showAllConnections;
 
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
@@ -128,6 +130,14 @@ export default function SchemaFlow() {
 
     return () => clearTimeout(timer);
   }, [compactMode, setNodes, setEdges]);
+
+  // Refresh edges when showAllConnections setting changes
+  // This recalculates which edges to show (all vs deduplicated single edge per pair)
+  useEffect(() => {
+    if (storeNodes.length > 0) {
+      refreshEdges();
+    }
+  }, [showAllConnections, refreshEdges, storeNodes.length]);
 
   // Fit view only when node count changes (new objects added)
   const [prevNodeCount, setPrevNodeCount] = useState(0);

@@ -54,6 +54,12 @@ const SETTINGS_GROUPS: Array<{
         colors: { bg: 'bg-slate-100', border: 'border-slate-300', text: 'text-slate-700' },
       },
       {
+        key: 'showAllConnections',
+        label: 'Show All Connections',
+        description: 'Display all relationship edges between objects (vs single representative)',
+        colors: { bg: 'bg-violet-100', border: 'border-violet-300', text: 'text-violet-700' },
+      },
+      {
         key: 'showEdgeLabels',
         label: 'Field Labels',
         description: 'Show field names (e.g., ParentId) on relationship lines',
@@ -101,7 +107,7 @@ export function SettingsDropdown() {
   return (
     <div
       ref={dropdownRef}
-      className="absolute top-full right-0 mt-1.5 bg-white border border-gray-200 rounded-sm shadow-lg z-50 min-w-[200px]"
+      className="absolute top-full right-0 mt-1.5 bg-white border border-gray-200 rounded-sm shadow-lg z-50 min-w-[220px]"
     >
       {/* Header */}
       <div className="px-3 py-2 border-b border-gray-100 bg-gray-50">
