@@ -11,16 +11,13 @@ import { CLOUD_PACKS } from '../../data/cloudPacks';
 import { CloudPackCard } from './CloudPackCard';
 
 export function CloudPacksPanel() {
-  const { availableObjects, addCloudPack, isLoadingObjects } = useAppStore();
+  const { availableObjects, selectedObjectNames, addCloudPack, isLoadingObjects } = useAppStore();
 
-  // Calculate available object count for each pack
-  const packAvailability = useMemo(() => {
-    const availableNames = new Set(availableObjects.map(o => o.name));
-    return CLOUD_PACKS.map(pack => ({
-      pack,
-      availableCount: pack.objects.filter(name => availableNames.has(name)).length,
-    }));
-  }, [availableObjects]);
+  // Create list of available object names for passing to cards
+  const availableObjectNames = useMemo(() =>
+    availableObjects.map(o => o.name),
+    [availableObjects]
+  );
 
   if (isLoadingObjects) {
     return (
@@ -57,11 +54,12 @@ export function CloudPacksPanel() {
         </div>
 
         {/* Pack cards */}
-        {packAvailability.map(({ pack, availableCount }) => (
+        {CLOUD_PACKS.map((pack) => (
           <CloudPackCard
             key={pack.id}
             pack={pack}
-            availableCount={availableCount}
+            availableObjects={availableObjectNames}
+            selectedObjects={selectedObjectNames}
             onAdd={() => addCloudPack(pack.id)}
           />
         ))}

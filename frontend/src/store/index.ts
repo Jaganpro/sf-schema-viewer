@@ -885,7 +885,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const pack = CLOUD_PACKS.find(p => p.id === packId);
     if (!pack) return { added: 0, total: 0 };
 
-    const { availableObjects, selectedObjectNames, describedObjects, apiVersion, nodes } = get();
+    const { availableObjects, selectedObjectNames, describedObjects, apiVersion } = get();
 
     // Filter to objects that exist in the org
     const availableNames = new Set(availableObjects.map(o => o.name));
@@ -932,30 +932,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       describes, newSelectedObjects, selectedFieldsByObject, selectedChildRelsByParent
     );
 
-    // Preserve existing node positions, position new nodes to the right
-    const existingPositions = new Map(nodes.map(n => [n.id, n.position]));
-    let maxX = 0;
-    let avgY = 0;
-    if (nodes.length > 0) {
-      nodes.forEach(n => {
-        maxX = Math.max(maxX, n.position.x + 300);
-        avgY += n.position.y;
-      });
-      avgY = avgY / nodes.length;
-    }
-
-    // Stack new nodes vertically, offset each slightly
-    let yOffset = 0;
-    const mergedNodes = newNodes.map(node => {
-      if (existingPositions.has(node.id)) {
-        return { ...node, position: existingPositions.get(node.id)! };
-      }
-      const position = { x: maxX, y: avgY + yOffset };
-      yOffset += 150; // Stack new nodes vertically
-      return { ...node, position };
-    });
-
-    set({ nodes: mergedNodes, edges: newEdges });
+    // Set nodes/edges then apply Dagre auto-layout for relationship-aware positioning
+    set({ nodes: newNodes, edges: newEdges });
+    get().applyLayout();
 
     return { added: toAdd.length, total: pack.objects.length };
   },
