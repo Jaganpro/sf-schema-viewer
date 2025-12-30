@@ -88,6 +88,60 @@ function SmartEdge({
     const targetWidth = targetNode.measured.width;
     const targetHeight = targetNode.measured.height!;
 
+    // ===========================================
+    // SELF-REFERENTIAL EDGE (e.g., Account → Account)
+    // Render as a curved loop on the right side of the node
+    // ===========================================
+    if (source === target) {
+      // Calculate loop dimensions based on node size
+      const loopWidth = 60;  // How far the loop extends from the node
+      const loopHeight = 50; // Vertical span of the loop
+
+      // Get all self-referential edges for this node to distribute them
+      const allEdges = getEdges();
+      const selfEdges = allEdges.filter(e => e.source === source && e.target === target);
+      selfEdges.sort((a, b) => {
+        const aField = (a.data as SmartEdgeData)?.fieldName ?? '';
+        const bField = (b.data as SmartEdgeData)?.fieldName ?? '';
+        return aField.localeCompare(bField);
+      });
+      const selfEdgeIndex = selfEdges.findIndex(e => e.id === id);
+      const totalSelfEdges = selfEdges.length;
+
+      // Distribute multiple self-edges vertically
+      const verticalOffset = (selfEdgeIndex - (totalSelfEdges - 1) / 2) * (loopHeight + 20);
+
+      // Start and end on the right side of the node
+      const startX = sourceNode.position.x + sourceWidth;
+      const startY = sourceNode.position.y + sourceHeight / 2 - 15 + verticalOffset;
+      const endX = sourceNode.position.x + sourceWidth;
+      const endY = sourceNode.position.y + sourceHeight / 2 + 15 + verticalOffset;
+
+      // Control points for smooth loop curve
+      const cp1X = startX + loopWidth;
+      const cp1Y = startY - loopHeight / 2;
+      const cp2X = endX + loopWidth;
+      const cp2Y = endY + loopHeight / 2;
+
+      // Create curved loop path using cubic bezier
+      const loopPath = `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`;
+
+      // Label positioned at the rightmost point of the loop
+      const labelX = startX + loopWidth + 10;
+      const labelY = (startY + endY) / 2;
+
+      return {
+        edgePath: loopPath,
+        labelX,
+        labelY,
+        sourceCardX: 0,  // Not used for self-references
+        sourceCardY: 0,
+        targetCardX: 0,
+        targetCardY: 0,
+        isSelfLoop: true,
+      };
+    }
+
     // Calculate center points
     const sourceCenterX = sourceNode.position.x + sourceWidth / 2;
     const sourceCenterY = sourceNode.position.y + sourceHeight / 2;
@@ -269,6 +323,7 @@ function SmartEdge({
       sourceCardY,
       targetCardX,
       targetCardY,
+      isSelfLoop: false,
     };
   }, [
     sourceNode?.position.x,
@@ -296,13 +351,10 @@ function SmartEdge({
     return null;
   }
 
-  const { edgePath, labelX, labelY, sourceCardX, sourceCardY, targetCardX, targetCardY } = edgeGeometry;
+  const { edgePath, labelX, labelY, sourceCardX, sourceCardY, targetCardX, targetCardY, isSelfLoop } = edgeGeometry;
   const isMasterDetail = data?.relationshipType === 'master-detail';
   const sourceCard = data?.sourceCardinality || 'N';
   const targetCard = data?.targetCardinality || '1';
-
-  // Hide cardinality labels for self-referential relationships (e.g., Account → Account)
-  const isSelfReference = data?.sourceObject === data?.targetObject;
 
   return (
     <>
@@ -316,8 +368,8 @@ function SmartEdge({
 
       {/* Edge labels */}
       <EdgeLabelRenderer>
-        {/* Cardinality labels - hidden for self-references */}
-        {!isSelfReference && (
+        {/* Cardinality labels - hidden for self-referential loops */}
+        {!isSelfLoop && (
           <>
             {/* Source cardinality */}
             <div

@@ -19,6 +19,7 @@ type RelationshipType = 'lookup' | 'master-detail';
  * @param selectedChildRelsByParent - Map of parent object to selected child relationships (for edge filtering)
  * @param relationshipTypeOverrides - Map of "ChildObject.FieldName" to cascade_delete boolean (for accurate MD/Lookup)
  * @param showAllConnections - If true, show all edges between object pairs instead of deduplicating
+ * @param showSelfReferences - If true, show self-referential edges (e.g., Account.ParentId → Account)
  */
 export function transformToFlowElements(
   describes: ObjectDescribe[],
@@ -26,7 +27,8 @@ export function transformToFlowElements(
   selectedFieldsByObject?: Map<string, Set<string>>,
   selectedChildRelsByParent?: Map<string, Set<string>>,
   relationshipTypeOverrides?: Map<string, boolean>,
-  showAllConnections?: boolean
+  showAllConnections?: boolean,
+  showSelfReferences?: boolean
 ): { nodes: Node<ObjectNodeData>[]; edges: Edge<RelationshipEdgeData>[] } {
   const selectedSet = new Set(selectedObjects);
   const nodes: Node<ObjectNodeData>[] = [];
@@ -70,8 +72,9 @@ export function transformToFlowElements(
           continue;
         }
 
-        // Skip self-referential edges (e.g., Account → Account via ParentAccountId)
-        if (describe.name === targetObject) {
+        // Skip self-referential edges unless the setting is enabled
+        // (e.g., Account → Account via ParentAccountId)
+        if (describe.name === targetObject && !showSelfReferences) {
           continue;
         }
 
@@ -89,15 +92,33 @@ export function transformToFlowElements(
           }
         }
 
-        // Determine relationship type from field's relationship_order
-        // relationshipOrder is ONLY set (0 or 1) for true MD fields, null for ALL Lookups
-        // (including cascaded lookups which have cascadeDelete=true but are still lookups)
+        // Determine relationship type using multiple indicators:
+        // 1. relationship_order != null → MD (works for custom objects)
+        // 2. cascade_delete = true AND field.updateable = false → MD (standard objects)
+        //    Key insight: MD fields can't be re-parented (updateable=false),
+        //    while Cascaded Lookups can (updateable=true)
+        // 3. Otherwise → Lookup
         const cascadeDeleteOverride = relationshipTypeOverrides?.get(relationshipKey);
+
+        // Look up cascade_delete from target's child_relationships
+        let cascadeDeleteFromTarget: boolean | undefined;
+        const targetDescribe = describes.find(d => d.name === targetObject);
+        if (targetDescribe?.child_relationships) {
+          const childRel = targetDescribe.child_relationships.find(
+            (rel) => rel.child_object === describe.name && rel.field === field.name
+          );
+          cascadeDeleteFromTarget = childRel?.cascade_delete;
+        }
+
+        // MD detection: relationship_order set, OR (cascade_delete AND not updateable)
+        const isMasterDetail =
+          field.relationship_order != null ||
+          (cascadeDeleteFromTarget === true && field.updateable === false);
 
         const relationshipType: RelationshipType =
           cascadeDeleteOverride !== undefined
             ? (cascadeDeleteOverride ? 'master-detail' : 'lookup')  // Manual override preserved
-            : (field.relationship_order != null)  // Only true MD fields have this set
+            : isMasterDetail
               ? 'master-detail'
               : 'lookup';
 

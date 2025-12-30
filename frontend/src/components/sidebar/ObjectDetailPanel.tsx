@@ -141,6 +141,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     objectEnrichment,
     enrichmentLoading,
     fetchObjectEnrichment,
+    // Edges currently displayed in diagram (for accurate "in diagram" count)
+    edges,
   } = useAppStore();
   const [fieldSearch, setFieldSearch] = useState('');
   const [relSearch, setRelSearch] = useState('');
@@ -307,22 +309,44 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   }, [objectDescribe?.fields]);
 
   // Helper to check if an outbound field is Master-Detail
-  // relationshipOrder is ONLY set (0 or 1) for true MD fields, null for ALL Lookups
-  // (including cascaded lookups which have cascadeDelete=true but are still lookups)
+  // Uses multi-indicator detection:
+  // 1. relationship_order != null → MD (custom objects)
+  // 2. cascade_delete = true AND field.updateable = false → MD (standard objects)
+  //    Key insight: MD fields can't be re-parented, Cascaded Lookups can
   const isOutboundMd = (fieldName: string): boolean => {
     const field = allOutboundLookups.find(f => f.name === fieldName);
-    return field?.relationship_order != null;
+    if (!field) return false;
+
+    // Check relationship_order first (works for custom objects)
+    if (field.relationship_order != null) return true;
+
+    // For standard objects, check cascade_delete AND updateable
+    // Need to look up cascade_delete from the target's child_relationships
+    const targetObject = field.reference_to?.[0];
+    if (!targetObject) return false;
+
+    const targetDescribe = describedObjects.get(targetObject);
+    const childRel = targetDescribe?.child_relationships?.find(
+      rel => rel.child_object === objectName && rel.field === fieldName
+    );
+
+    return childRel?.cascade_delete === true && field.updateable === false;
   };
 
   // Helper to check if an inbound (child) relationship is Master-Detail
-  // Look up the field on the child object to get its relationship_order
+  // Uses multi-indicator detection (same logic as isOutboundMd)
   const isInboundMd = (rel: RelationshipInfo): boolean => {
     const childDescribe = describedObjects.get(rel.child_object);
-    if (childDescribe?.fields) {
-      const field = childDescribe.fields.find(f => f.name === rel.field);
-      return field?.relationship_order != null;
-    }
-    return false; // If child not described, assume Lookup (safer default)
+    if (!childDescribe?.fields) return false;
+
+    const field = childDescribe.fields.find(f => f.name === rel.field);
+    if (!field) return false;
+
+    // Check relationship_order first (works for custom objects)
+    if (field.relationship_order != null) return true;
+
+    // For standard objects: cascade_delete AND not updateable
+    return rel.cascade_delete === true && field.updateable === false;
   };
 
   // Filter outbound lookups with search and MD/Lookup filter
@@ -432,11 +456,24 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     });
   };
 
-  // Count how many visible child objects are in the diagram (for Inbound tab)
+  // Count how many relationships have actual visible edges in the diagram
+  // This is edge-accurate: accounts for self-ref hiding, deduplication, etc.
   const inboundInDiagramCount = useMemo(() => {
-    const childObjectNames = [...new Set(filteredRelationships.map((rel) => rel.child_object))];
-    return childObjectNames.filter(name => selectedObjectNames.includes(name)).length;
-  }, [filteredRelationships, selectedObjectNames]);
+    // Get edges pointing TO this object (inbound edges)
+    const inboundEdges = edges.filter(edge => edge.target === objectName);
+
+    // Count relationships that have corresponding visible edges
+    let count = 0;
+    for (const rel of filteredRelationships) {
+      const hasVisibleEdge = inboundEdges.some(
+        edge => edge.source === rel.child_object &&
+                (edge.data as { fieldName?: string })?.fieldName === rel.field
+      );
+      if (hasVisibleEdge) count++;
+    }
+
+    return count;
+  }, [edges, objectName, filteredRelationships]);
 
   // Toggle outbound lookup - adds/removes target object from diagram
   const toggleOutboundLookup = (targetObject: string) => {

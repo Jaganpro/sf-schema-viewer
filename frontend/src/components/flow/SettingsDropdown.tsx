@@ -71,6 +71,12 @@ const SETTINGS_GROUPS: Array<{
         description: 'Show animated flow direction on relationship lines',
         colors: { bg: 'bg-indigo-100', border: 'border-indigo-300', text: 'text-indigo-700' },
       },
+      {
+        key: 'showSelfReferences',
+        label: 'Self-References',
+        description: 'Show self-referential edges (e.g., Account.ParentId → Account)',
+        colors: { bg: 'bg-pink-100', border: 'border-pink-300', text: 'text-pink-700' },
+      },
     ],
   },
 ];
