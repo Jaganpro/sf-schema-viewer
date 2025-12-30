@@ -388,17 +388,17 @@ export default function ObjectPicker() {
   if (!sidebarOpen) {
     return (
       <div
-        className="w-7 h-full bg-gray-50 border-r border-sf-border flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors"
+        className="w-7 h-full bg-gray-50 border-r border-sf-border flex flex-col items-center pt-4 cursor-pointer hover:bg-gray-100 transition-colors"
         onClick={toggleSidebar}
         title="Open sidebar"
       >
         <span
-          className="text-[10px] font-medium text-gray-500 tracking-wide"
+          className="text-xs font-medium text-gray-500 tracking-wide"
           style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
         >
           Objects
         </span>
-        <ChevronRight className="h-3 w-3 text-gray-400 mt-2" />
+        <ChevronRight className="h-3.5 w-3.5 text-gray-400 mt-2" />
       </div>
     );
   }

@@ -27,6 +27,7 @@ const CLOUD_FILTERS: Array<{
   border: string;
   text: string;
 }> = [
+  { color: 'platform', label: 'Platform', shortLabel: 'Platform', bg: 'bg-sky-100', border: 'border-sky-300', text: 'text-sky-700' },
   { color: 'sales', label: 'Sales Cloud', shortLabel: 'Sales', bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-700' },
   { color: 'service', label: 'Service Cloud', shortLabel: 'Service', bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-700' },
   { color: 'revenue', label: 'Revenue Cloud', shortLabel: 'Revenue', bg: 'bg-green-100', border: 'border-green-300', text: 'text-green-700' },

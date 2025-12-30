@@ -383,7 +383,7 @@ export default function SchemaFlow() {
 
         {/* Stats */}
         <Panel position="top-left" className="mt-[120px]">
-          <div className="bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-xs text-sf-text-muted flex gap-2.5 shadow-sm font-medium">
+          <div className="bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm text-sf-text-muted flex gap-2.5 shadow-sm font-medium">
             <span>{selectedObjectNames.length} objects</span>
             <span>•</span>
             <span>{edges.length} relationships</span>

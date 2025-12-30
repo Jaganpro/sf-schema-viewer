@@ -89,14 +89,17 @@ export function transformToFlowElements(
           }
         }
 
-        // Determine relationship type
-        // Priority: 1) Override from child relationships (cascade_delete), 2) Field's relationship_order
-        // Note: relationshipKey already defined above for filtering
+        // Determine relationship type from field's relationship_order
+        // relationshipOrder is ONLY set (0 or 1) for true MD fields, null for ALL Lookups
+        // (including cascaded lookups which have cascadeDelete=true but are still lookups)
         const cascadeDeleteOverride = relationshipTypeOverrides?.get(relationshipKey);
+
         const relationshipType: RelationshipType =
           cascadeDeleteOverride !== undefined
-            ? (cascadeDeleteOverride ? 'master-detail' : 'lookup')  // Use authoritative cascade_delete
-            : (field.relationship_order === 1 ? 'master-detail' : 'lookup');  // Fallback to field's value
+            ? (cascadeDeleteOverride ? 'master-detail' : 'lookup')  // Manual override preserved
+            : (field.relationship_order != null)  // Only true MD fields have this set
+              ? 'master-detail'
+              : 'lookup';
 
         edges.push({
           id: `${describe.name}-${field.name}-${targetObject}`,

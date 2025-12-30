@@ -106,6 +106,14 @@ const COLOR_CLASSES = {
     tooltip: 'bg-fuchsia-50 border border-fuchsia-200 text-gray-900',
     tooltipMuted: 'text-fuchsia-700',
   },
+  platform: {
+    bg: 'bg-sky-100/70',
+    border: 'border-l-sky-600 border-sky-200',
+    hoverBg: 'hover:bg-sky-100',
+    hoverBorder: 'hover:border-sky-300 hover:border-l-sky-600',
+    tooltip: 'bg-sky-50 border border-sky-200 text-gray-900',
+    tooltipMuted: 'text-sky-700',
+  },
 } as const;
 
 interface CloudPackCardProps {
@@ -152,7 +160,7 @@ export function CloudPackCard({ pack, availableObjects, selectedObjects, onAdd, 
       <TooltipTrigger asChild>
         <div
           className={cn(
-            'border rounded p-2 transition-all border-l-[3px]',
+            'border rounded p-3 transition-all border-l-[3px]',
             isFullyDisabled
               ? 'border-gray-100 border-l-gray-300 bg-gray-50/50 opacity-40'
               : isGreyed
@@ -160,11 +168,11 @@ export function CloudPackCard({ pack, availableObjects, selectedObjects, onAdd, 
                 : `${colorClass.bg} ${colorClass.border} ${colorClass.hoverBg} ${colorClass.hoverBorder} hover:shadow-sm`
           )}
         >
-          {/* Compact layout: Name + count on left, button on right */}
-          <div className="flex items-center justify-between gap-2">
+          {/* Layout matching All Objects: Name + count on left, button on right */}
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h4 className="font-medium text-xs text-sf-text truncate">{pack.name}</h4>
-              <p className="text-[10px] text-gray-500">
+              <h4 className="font-medium text-sm text-sf-text truncate">{pack.name}</h4>
+              <p className="text-xs text-gray-500">
                 {packSelected.length > 0 ? (
                   <>{packSelected.length} added • {packInOrg.length}/{pack.objects.length} available</>
                 ) : (
@@ -180,25 +188,25 @@ export function CloudPackCard({ pack, availableObjects, selectedObjects, onAdd, 
               onClick={handleAdd}
               disabled={isDisabled || isAdding || allAdded}
               className={cn(
-                'flex-shrink-0 h-6 px-2 text-[10px] cursor-pointer',
+                'flex-shrink-0 h-7 px-3 text-xs cursor-pointer',
                 allAdded && 'bg-green-50 border-green-300 text-green-700 hover:bg-green-50'
               )}
             >
               {isAdding ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : allAdded ? (
                 <>
-                  <Check className="h-3 w-3 mr-0.5" />
+                  <Check className="h-3.5 w-3.5 mr-1" />
                   Added
                 </>
               ) : packSelected.length > 0 ? (
                 <>
-                  <Plus className="h-3 w-3 mr-0.5" />
+                  <Plus className="h-3.5 w-3.5 mr-1" />
                   +{remaining}
                 </>
               ) : (
                 <>
-                  <Plus className="h-3 w-3 mr-0.5" />
+                  <Plus className="h-3.5 w-3.5 mr-1" />
                   Add
                 </>
               )}

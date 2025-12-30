@@ -9,6 +9,8 @@ import {
   Search,
   Zap,
   ArrowRight,
+  ArrowUpRight,
+  ArrowDownLeft,
   Loader2,
   Link,
   ExternalLink,
@@ -133,12 +135,6 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     selectOnlyLookups,
     detailPanelWidth,
     setDetailPanelWidth,
-    // Child relationship selection (persisted in store for edge filtering)
-    selectedChildRelsByParent,
-    addChildRelationship,
-    removeChildRelationship,
-    clearChildRelationships,
-    refreshEdges,
     // Object type filters (for filtering child relationships)
     objectTypeFilters,
     // Object enrichment data (Tooling API metadata - Tier 1)
@@ -156,8 +152,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   const [activeFieldFilters, setActiveFieldFilters] = useState<Set<FieldFilterType>>(new Set());
   const [activeRelFilters, setActiveRelFilters] = useState<Set<RelFilterType>>(new Set());
 
-  // Get selected child relationships for this object from store
-  const selectedRels = selectedChildRelsByParent.get(objectName) ?? new Set<string>();
+  // Subtab state for Relationships tab (outbound vs inbound)
+  const [relSubtab, setRelSubtab] = useState<'outbound' | 'inbound'>('outbound');
 
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
@@ -302,6 +298,63 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     return fields;
   }, [objectDescribe?.fields, fieldSearch, activeFieldFilters]);
 
+  // Get all outbound lookups (reference fields that point TO other objects)
+  const allOutboundLookups = useMemo(() => {
+    if (!objectDescribe?.fields) return [];
+    return objectDescribe.fields.filter(
+      (f) => f.type === 'reference' && f.reference_to && f.reference_to.length > 0
+    );
+  }, [objectDescribe?.fields]);
+
+  // Helper to check if an outbound field is Master-Detail
+  // relationshipOrder is ONLY set (0 or 1) for true MD fields, null for ALL Lookups
+  // (including cascaded lookups which have cascadeDelete=true but are still lookups)
+  const isOutboundMd = (fieldName: string): boolean => {
+    const field = allOutboundLookups.find(f => f.name === fieldName);
+    return field?.relationship_order != null;
+  };
+
+  // Helper to check if an inbound (child) relationship is Master-Detail
+  // Look up the field on the child object to get its relationship_order
+  const isInboundMd = (rel: RelationshipInfo): boolean => {
+    const childDescribe = describedObjects.get(rel.child_object);
+    if (childDescribe?.fields) {
+      const field = childDescribe.fields.find(f => f.name === rel.field);
+      return field?.relationship_order != null;
+    }
+    return false; // If child not described, assume Lookup (safer default)
+  };
+
+  // Filter outbound lookups with search and MD/Lookup filter
+  const filteredOutboundLookups = useMemo(() => {
+    let lookups = [...allOutboundLookups];
+
+    // Apply pill filters (OR logic - same as child relationships)
+    if (activeRelFilters.size > 0) {
+      lookups = lookups.filter(field => {
+        // Check MD status for any of the target objects
+        const isMd = isOutboundMd(field.name);
+        if (activeRelFilters.has('masterDetail') && isMd) return true;
+        if (activeRelFilters.has('lookup') && !isMd) return true;
+        return false;
+      });
+    }
+
+    // Apply search term
+    const term = relSearch.toLowerCase();
+    if (term) {
+      lookups = lookups.filter(
+        (f) =>
+          f.name.toLowerCase().includes(term) ||
+          f.label.toLowerCase().includes(term) ||
+          f.reference_to?.join(',').toLowerCase().includes(term) ||
+          f.relationship_name?.toLowerCase().includes(term)
+      );
+    }
+
+    return lookups;
+  }, [allOutboundLookups, relSearch, activeRelFilters]);
+
   // Filter child relationships based on pill filters, search, AND object type filters
   const { filteredRelationships, hiddenByFiltersCount } = useMemo(() => {
     if (!objectDescribe?.child_relationships) {
@@ -323,8 +376,9 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
     // Apply pill filters (OR logic - show if matches ANY active filter)
     if (activeRelFilters.size > 0) {
       filtered = filtered.filter(rel => {
-        if (activeRelFilters.has('masterDetail') && rel.cascade_delete) return true;
-        if (activeRelFilters.has('lookup') && !rel.cascade_delete) return true;
+        const isMd = isInboundMd(rel);
+        if (activeRelFilters.has('masterDetail') && isMd) return true;
+        if (activeRelFilters.has('lookup') && !isMd) return true;
         return false;
       });
     }
@@ -346,32 +400,8 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
   // Helper to generate unique key for a relationship
   const getRelKey = (rel: RelationshipInfo) => `${rel.child_object}.${rel.field}`;
 
-  // Toggle relationship selection - also adds/removes child object from diagram
-  // Uses store to persist selection for edge filtering
-  const toggleRelSelection = (rel: RelationshipInfo) => {
-    const key = getRelKey(rel);
-    const isCurrentlySelected = selectedRels.has(key);
-    const isChildAlreadyInDiagram = selectedObjectNames.includes(rel.child_object);
-
-    if (isCurrentlySelected) {
-      // Unchecking - remove from selection and diagram
-      removeChildRelationship(objectName, key);
-      removeObject(rel.child_object);
-    } else {
-      // Checking - add to selection and diagram (pass cascade_delete for accurate MD/Lookup type)
-      addChildRelationship(objectName, key, rel.cascade_delete);
-      if (isChildAlreadyInDiagram) {
-        // Object already in diagram - just refresh edges to show new relationship
-        refreshEdges();
-      } else {
-        // New object - add to diagram (which will also create edges)
-        addObject(rel.child_object);
-      }
-    }
-  };
-
-  // Select all relationships - adds all visible (non-filtered) child objects to diagram
-  const selectAllRels = () => {
+  // Add all visible child objects to diagram (Inbound tab)
+  const selectAllInbound = () => {
     if (filteredRelationships.length > 0) {
       // Get unique child object names from visible relationships only
       const childObjectNames = [
@@ -383,25 +413,49 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
         ...new Set([...selectedObjectNames, ...childObjectNames])
       ];
 
-      // Single batch API call - no race conditions!
+      // Single batch API call
       selectObjects(allObjectNames);
-
-      // Add all visible relationships to store for edge filtering (pass cascade_delete for accurate type)
-      filteredRelationships.forEach((rel) => {
-        addChildRelationship(objectName, getRelKey(rel), rel.cascade_delete);
-      });
     }
   };
 
-  // Clear relationship selection - removes all selected child objects from diagram
-  const clearRelSelection = () => {
-    // Remove all previously selected child objects from diagram
-    selectedRels.forEach((key) => {
-      const childObject = key.split('.')[0]; // Extract object name from "Object.Field"
-      removeObject(childObject);
+  // Remove all visible child objects from diagram (Inbound tab)
+  const clearInboundSelection = () => {
+    // Get unique child object names from visible relationships
+    const childObjectNames = [
+      ...new Set(filteredRelationships.map((rel) => rel.child_object))
+    ];
+    // Remove each child object from diagram
+    childObjectNames.forEach((childObject) => {
+      if (selectedObjectNames.includes(childObject)) {
+        removeObject(childObject);
+      }
     });
-    // Clear selection state from store
-    clearChildRelationships(objectName);
+  };
+
+  // Count how many visible child objects are in the diagram (for Inbound tab)
+  const inboundInDiagramCount = useMemo(() => {
+    const childObjectNames = [...new Set(filteredRelationships.map((rel) => rel.child_object))];
+    return childObjectNames.filter(name => selectedObjectNames.includes(name)).length;
+  }, [filteredRelationships, selectedObjectNames]);
+
+  // Toggle outbound lookup - adds/removes target object from diagram
+  const toggleOutboundLookup = (targetObject: string) => {
+    if (selectedObjectNames.includes(targetObject)) {
+      removeObject(targetObject);
+    } else {
+      addObject(targetObject);
+    }
+  };
+
+  // Add all visible outbound lookup targets to diagram
+  const selectAllOutbound = () => {
+    const targetObjects = [
+      ...new Set(filteredOutboundLookups.flatMap((f) => f.reference_to ?? []))
+    ].filter((name) => !selectedObjectNames.includes(name));
+
+    if (targetObjects.length > 0) {
+      selectObjects([...selectedObjectNames, ...targetObjects]);
+    }
   };
 
   if (!objectInfo) {
@@ -504,7 +558,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
               Fields ({objectDescribe.fields.length})
             </TabsTrigger>
             <TabsTrigger value="relationships" className="text-xs">
-              Relationships ({filteredRelationships.length})
+              Relationships ({filteredOutboundLookups.length + filteredRelationships.length})
             </TabsTrigger>
           </TabsList>
 
@@ -655,25 +709,56 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
             </ScrollArea>
           </TabsContent>
 
-          {/* Child Relationships Tab */}
+          {/* Relationships Tab - With Outbound/Inbound subtabs */}
           <TabsContent value="relationships" className="flex-1 flex flex-col min-h-0 mt-0">
-            <div className="px-4 py-3 border-b border-gray-100">
-              {/* Selected count and hidden count */}
-              <div className="flex items-center gap-2 mb-2 text-xs">
-                {selectedRels.size > 0 && (
-                  <span className="text-sf-blue">{selectedRels.size} selected</span>
-                )}
-                {hiddenByFiltersCount > 0 && (
-                  <span className="text-sf-text-muted">
-                    ({hiddenByFiltersCount} hidden by filters)
+            {/* Subtab selector */}
+            <div className="px-4 pt-3 pb-2 border-b border-gray-100">
+              <div className="flex rounded-lg bg-gray-100 p-0.5">
+                <button
+                  onClick={() => setRelSubtab('outbound')}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                    relSubtab === 'outbound'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  )}
+                >
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                  <span>Outbound</span>
+                  <span className={cn(
+                    'px-1.5 py-0.5 rounded text-[10px]',
+                    relSubtab === 'outbound' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'
+                  )}>
+                    {filteredOutboundLookups.length}
                   </span>
-                )}
+                </button>
+                <button
+                  onClick={() => setRelSubtab('inbound')}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                    relSubtab === 'inbound'
+                      ? 'bg-white text-green-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  )}
+                >
+                  <ArrowDownLeft className="h-3.5 w-3.5" />
+                  <span>Inbound</span>
+                  <span className={cn(
+                    'px-1.5 py-0.5 rounded text-[10px]',
+                    relSubtab === 'inbound' ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'
+                  )}>
+                    {filteredRelationships.length}
+                  </span>
+                </button>
               </div>
-              {/* Search input */}
+            </div>
+
+            {/* Search and filters */}
+            <div className="px-4 py-2 border-b border-gray-100">
               <div className="relative mb-2">
                 <Input
                   type="text"
-                  placeholder="Search relationships..."
+                  placeholder={relSubtab === 'outbound' ? 'Search lookups...' : 'Search relationships...'}
                   value={relSearch}
                   onChange={(e) => setRelSearch(e.target.value)}
                   className="h-8 text-xs pr-8"
@@ -687,8 +772,7 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                   </button>
                 )}
               </div>
-              {/* Filter pills */}
-              <div className="flex flex-wrap gap-1.5 mb-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {REL_FILTERS.map(filter => (
                   <button
                     key={filter.key}
@@ -711,80 +795,170 @@ export default function ObjectDetailPanel({ objectName, onClose }: ObjectDetailP
                     ✕ Clear
                   </button>
                 )}
-              </div>
-              {/* Quick action buttons */}
-              <div className="flex gap-1.5 text-xs">
-                <button
-                  onClick={selectAllRels}
-                  className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
-                >
-                  Select All
-                </button>
-                <button
-                  onClick={clearRelSelection}
-                  className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sf-text"
-                >
-                  Clear
-                </button>
+                {hiddenByFiltersCount > 0 && relSubtab === 'inbound' && (
+                  <span className="text-[10px] text-sf-text-muted ml-1">
+                    ({hiddenByFiltersCount} hidden)
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Relationship List */}
-            <ScrollArea className="flex-1">
-              <div className="py-1">
-                {filteredRelationships.length === 0 ? (
-                  <div className="px-4 py-4 text-center text-xs text-sf-text-muted">
-                    {relSearch ? 'No matching relationships' : 'No child relationships'}
-                  </div>
-                ) : (
-                  filteredRelationships.map((rel) => {
-                    const relKey = getRelKey(rel);
-                    return (
-                      <div
-                        key={relKey}
-                        className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer"
-                        onClick={() => setSelectedRelationship(rel)}
-                      >
-                        <div
-                          className="grid items-center gap-2"
-                          style={{ gridTemplateColumns: 'auto 1fr auto' }}
-                        >
-                          {/* Column 1: Checkbox - stop propagation to prevent modal open */}
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <Checkbox
-                              checked={selectedRels.has(relKey)}
-                              onCheckedChange={() => toggleRelSelection(rel)}
-                            />
-                          </div>
-                          {/* Column 2: Relationship info (truncates) */}
-                          <div className="min-w-0">
-                            <div className="truncate">
-                              <span className="text-sm text-sf-text font-mono">
-                                {rel.child_object}
-                              </span>
-                              <span className="text-sf-text-muted">.</span>
-                              <span className="text-sm text-sf-text-muted font-mono">
-                                {rel.field}
-                              </span>
-                            </div>
-                            <div className="text-xs text-sf-text-muted truncate">
-                              <span className="font-mono">{rel.relationship_name || '—'}</span>
-                            </div>
-                          </div>
-                          {/* Column 3: Badge (always visible) */}
-                          <Badge
-                            variant={rel.cascade_delete ? 'masterDetail' : 'lookup'}
-                            className="text-[10px]"
-                          >
-                            {rel.cascade_delete ? 'MD' : 'Lookup'}
-                          </Badge>
-                        </div>
+            {/* ===== OUTBOUND SUBTAB CONTENT ===== */}
+            {relSubtab === 'outbound' && (
+              <>
+                {/* Helper text and actions */}
+                <div className="px-4 py-2 bg-blue-50/50 border-b border-blue-100">
+                  <p className="text-[10px] text-blue-600 mb-1.5">
+                    Lookup fields on this object pointing to other objects
+                  </p>
+                  {filteredOutboundLookups.length > 0 && (
+                    <button
+                      onClick={selectAllOutbound}
+                      className="px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs"
+                    >
+                      Add All to Diagram
+                    </button>
+                  )}
+                </div>
+
+                <ScrollArea className="flex-1">
+                  <div className="py-1">
+                    {filteredOutboundLookups.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-xs text-sf-text-muted">
+                        {relSearch ? 'No matching lookups' : 'No outbound lookups'}
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
+                    ) : (
+                      filteredOutboundLookups.map((field) =>
+                        field.reference_to?.map((targetObject) => (
+                          <div
+                            key={`${field.name}-${targetObject}`}
+                            className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50"
+                          >
+                            <div
+                              className="grid items-center gap-2"
+                              style={{ gridTemplateColumns: 'auto 1fr auto' }}
+                            >
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={selectedObjectNames.includes(targetObject)}
+                                  onCheckedChange={() => toggleOutboundLookup(targetObject)}
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1 truncate">
+                                  <span className="text-sm text-sf-text font-mono">
+                                    {field.name}
+                                  </span>
+                                  <ArrowRight className="h-3 w-3 text-blue-500 shrink-0" />
+                                  <span className="text-sm text-sf-blue font-mono">
+                                    {targetObject}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-sf-text-muted truncate">
+                                  {field.relationship_name || '—'}
+                                </div>
+                              </div>
+                              <Badge
+                                variant={isOutboundMd(field.name) ? 'masterDetail' : 'lookup'}
+                                className="text-[10px]"
+                              >
+                                {isOutboundMd(field.name) ? 'MD' : 'Lookup'}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))
+                      )
+                    )}
+                  </div>
+                </ScrollArea>
+              </>
+            )}
+
+            {/* ===== INBOUND SUBTAB CONTENT ===== */}
+            {relSubtab === 'inbound' && (
+              <>
+                {/* Helper text and actions */}
+                <div className="px-4 py-2 bg-green-50/50 border-b border-green-100">
+                  <p className="text-[10px] text-green-600 mb-1.5">
+                    Other objects with lookup fields pointing to this object
+                  </p>
+                  {filteredRelationships.length > 0 && (
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={selectAllInbound}
+                        className="px-2 py-1 rounded bg-green-100 hover:bg-green-200 text-green-700 text-xs"
+                      >
+                        Add All to Diagram
+                      </button>
+                      <button
+                        onClick={clearInboundSelection}
+                        className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs"
+                      >
+                        Remove All
+                      </button>
+                      {inboundInDiagramCount > 0 && (
+                        <span className="px-2 py-1 text-xs text-green-600">
+                          {inboundInDiagramCount} in diagram
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <ScrollArea className="flex-1">
+                  <div className="py-1">
+                    {filteredRelationships.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-xs text-sf-text-muted">
+                        {relSearch ? 'No matching relationships' : 'No child relationships'}
+                      </div>
+                    ) : (
+                      filteredRelationships.map((rel) => {
+                        const relKey = getRelKey(rel);
+                        return (
+                          <div
+                            key={relKey}
+                            className="px-4 py-2 hover:bg-gray-50 border-b border-gray-50 cursor-pointer"
+                            onClick={() => setSelectedRelationship(rel)}
+                          >
+                            <div
+                              className="grid items-center gap-2"
+                              style={{ gridTemplateColumns: 'auto 1fr auto' }}
+                            >
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={selectedObjectNames.includes(rel.child_object)}
+                                  onCheckedChange={() => toggleOutboundLookup(rel.child_object)}
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="truncate">
+                                  <span className="text-sm text-sf-text font-mono">
+                                    {rel.child_object}
+                                  </span>
+                                  <span className="text-sf-text-muted">.</span>
+                                  <span className="text-sm text-sf-text-muted font-mono">
+                                    {rel.field}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-sf-text-muted truncate">
+                                  <span className="font-mono">{rel.relationship_name || '—'}</span>
+                                </div>
+                              </div>
+                              <Badge
+                                variant={isInboundMd(rel) ? 'masterDetail' : 'lookup'}
+                                className="text-[10px]"
+                              >
+                                {isInboundMd(rel) ? 'MD' : 'Lookup'}
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </ScrollArea>
+              </>
+            )}
           </TabsContent>
 
           {/* Details Tab */}
