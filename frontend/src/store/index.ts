@@ -98,6 +98,22 @@ const DEFAULT_BADGE_SETTINGS: BadgeDisplaySettings = {
   showAllConnections: false,  // Default: single edge for cleaner diagrams
 };
 
+/**
+ * Export settings - controls export format options
+ */
+export interface ExportSettings {
+  resolution: 1 | 2 | 3;                    // Resolution multiplier (1x, 2x, 3x)
+  background: 'white' | 'transparent';      // Background color
+  includeLegend: boolean;                   // Include legend panel in export
+}
+
+/** Default export settings - 2x resolution, white background, include legend */
+const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
+  resolution: 2,
+  background: 'white',
+  includeLegend: true,
+};
+
 interface AppState {
   // Auth state
   authStatus: AuthStatus | null;
@@ -163,6 +179,11 @@ interface AppState {
   badgeSettings: BadgeDisplaySettings;
   showSettingsDropdown: boolean;
 
+  // Export state
+  exportSettings: ExportSettings;
+  showExportDropdown: boolean;
+  isExporting: boolean;
+
   // Error state
   error: string | null;
 
@@ -215,6 +236,10 @@ interface AppState {
   // Badge display settings actions
   toggleSettingsDropdown: () => void;
   toggleBadgeSetting: (key: keyof BadgeDisplaySettings) => void;
+  // Export actions
+  toggleExportDropdown: () => void;
+  setExportSetting: <K extends keyof ExportSettings>(key: K, value: ExportSettings[K]) => void;
+  setIsExporting: (loading: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -254,6 +279,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   fieldMetadata: new Map(),  // Field-level metadata (indexed, classification, etc.)
   badgeSettings: { ...DEFAULT_BADGE_SETTINGS },
   showSettingsDropdown: false,
+  exportSettings: { ...DEFAULT_EXPORT_SETTINGS },
+  showExportDropdown: false,
+  isExporting: false,
   error: null,
 
   // Actions
@@ -1113,5 +1141,23 @@ export const useAppStore = create<AppState>((set, get) => ({
         [key]: !state.badgeSettings[key],
       },
     }));
+  },
+
+  // Export actions
+  toggleExportDropdown: () => {
+    set((state) => ({ showExportDropdown: !state.showExportDropdown }));
+  },
+
+  setExportSetting: (key, value) => {
+    set((state) => ({
+      exportSettings: {
+        ...state.exportSettings,
+        [key]: value,
+      },
+    }));
+  },
+
+  setIsExporting: (loading: boolean) => {
+    set({ isExporting: loading });
   },
 }));

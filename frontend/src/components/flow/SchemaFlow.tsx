@@ -21,6 +21,7 @@ import {
   X,
   ChevronUp,
   Settings,
+  Download,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ import ObjectNode from './ObjectNode';
 import type { ObjectNodeData } from './ObjectNode';
 import SmartEdge, { EdgeMarkerDefs } from './SmartEdge';
 import { SettingsDropdown } from './SettingsDropdown';
+import { ExportDropdown } from './ExportDropdown';
 import { useAppStore } from '../../store';
 
 // Register custom node and edge types
@@ -52,6 +54,8 @@ export default function SchemaFlow() {
     toggleLegend,
     showSettingsDropdown,
     toggleSettingsDropdown,
+    showExportDropdown,
+    toggleExportDropdown,
     badgeSettings,
   } = useAppStore();
 
@@ -217,6 +221,27 @@ export default function SchemaFlow() {
             Fit View
           </button>
 
+          {/* Export button with dropdown */}
+          <div className="relative">
+            <button
+              data-export-button
+              onClick={toggleExportDropdown}
+              disabled={nodes.length === 0}
+              className={cn(
+                'bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm font-medium cursor-pointer flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]',
+                showExportDropdown
+                  ? 'bg-sf-blue border-sf-blue text-white hover:bg-sf-blue-dark'
+                  : 'text-sf-text hover:bg-blue-50 hover:border-sf-blue hover:text-sf-blue',
+                nodes.length === 0 && 'opacity-50 cursor-not-allowed'
+              )}
+              title="Export diagram"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </button>
+            {showExportDropdown && <ExportDropdown />}
+          </div>
+
           {/* Settings button with dropdown */}
           <div className="relative">
             <button
@@ -259,7 +284,7 @@ export default function SchemaFlow() {
         )}
 
         {/* Legend with toggle */}
-        <Panel position="bottom-right">
+        <Panel position="bottom-right" data-export-legend>
           {showLegend ? (
             <div className="bg-white border border-gray-200 rounded-sm shadow-md overflow-hidden min-w-[180px]">
               {/* Header with close button */}
