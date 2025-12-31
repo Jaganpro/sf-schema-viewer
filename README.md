@@ -16,7 +16,9 @@
   <a href="#-tech-stack">Tech Stack</a>
 </p>
 
-<!-- Screenshot will be added here -->
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/b67eee32-97b8-4ea8-b01b-3c4ee64bee13" alt="SF Schema Viewer Screenshot" width="900">
+</p>
 
 ---
 
