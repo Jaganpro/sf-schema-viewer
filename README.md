@@ -1,26 +1,14 @@
-<h1 align="center">
-  <br>
-  <img src="docs/logo.svg" alt="SF Schema Viewer" width="80">
-  <br>
-  Salesforce Schema Viewer
-  <br>
-</h1>
+# Salesforce Schema Viewer
 
-<h4 align="center">A beautiful, interactive tool to visualize your Salesforce database schema</h4>
+> 🔮 Interactive ERD visualization for Salesforce orgs — explore objects, relationships, and metadata with a modern React UI
 
-<p align="center">
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-usage">Usage</a> •
-  <a href="#-manual-setup">Manual Setup</a> •
-  <a href="#-tech-stack">Tech Stack</a>
-</p>
+[![Author](https://img.shields.io/badge/Author-Jag%20Valaiyapathy-blue)](https://github.com/Jaganpro) [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/b67eee32-97b8-4ea8-b01b-3c4ee64bee13" alt="SF Schema Viewer Screenshot" width="900">
-</p>
+A beautiful, interactive tool to visualize your Salesforce database schema. Connect to any org, explore standard and custom objects, and understand relationships at a glance.
 
----
+**React Flow canvas • PKCE OAuth • Data Cloud support • Export to PNG/SVG/JSON**
+
+<img src="https://github.com/user-attachments/assets/b67eee32-97b8-4ea8-b01b-3c4ee64bee13" alt="SF Schema Viewer Screenshot" width="100%">
 
 ## 🚀 Quick Start
 
