@@ -9,14 +9,118 @@
 <h4 align="center">A beautiful, interactive tool to visualize your Salesforce database schema</h4>
 
 <p align="center">
-  <a href="#features">Features</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#setup">Setup</a> •
-  <a href="#usage">Usage</a> •
-  <a href="#tech-stack">Tech Stack</a>
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-usage">Usage</a> •
+  <a href="#-manual-setup">Manual Setup</a> •
+  <a href="#-tech-stack">Tech Stack</a>
 </p>
 
 <!-- Screenshot will be added here -->
+
+---
+
+## 🚀 Quick Start
+
+Get up and running in under 2 minutes:
+
+```bash
+# Clone the repository
+git clone https://github.com/Jaganpro/sf-schema-viewer.git
+cd sf-schema-viewer
+
+# Run the interactive setup wizard
+./setup.sh
+```
+
+That's it! The setup wizard will guide you through:
+
+- ✅ Checking prerequisites (Node.js, Python, etc.)
+- ✅ Selecting your Salesforce org (if SF CLI is installed)
+- ✅ Creating an External Client App for OAuth
+- ✅ Configuring your `.env` file automatically
+- ✅ Starting the application
+
+Open http://localhost:5173 and click **Connect to Salesforce** 🎉
+
+---
+
+## 📋 Prerequisites
+
+| Requirement | Version | Check Command |
+|-------------|---------|---------------|
+| Node.js | 18+ | `node --version` |
+| Python | 3.11+ | `python3 --version` |
+| uv | latest | `uv --version` |
+| npm | latest | `npm --version` |
+| SF CLI | (optional) | `sf --version` |
+
+> **Note**: Salesforce CLI is optional but enables org selection and opens Setup directly in your browser.
+
+<details>
+<summary><b>Installing Prerequisites (macOS)</b></summary>
+
+```bash
+# Install Homebrew (if not installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Node.js
+brew install node
+
+# Install Python
+brew install python@3.11
+
+# Install uv (Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install Salesforce CLI (optional)
+brew install sf
+```
+
+</details>
+
+<details>
+<summary><b>Installing Prerequisites (Linux/Ubuntu)</b></summary>
+
+```bash
+# Install Node.js (via nvm)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 18
+
+# Install Python
+sudo apt update && sudo apt install python3.11 python3.11-venv
+
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install Salesforce CLI (optional)
+npm install -g @salesforce/cli
+```
+
+</details>
+
+---
+
+## 📜 Setup Script Options
+
+The `setup.sh` wizard supports several options:
+
+```bash
+./setup.sh              # Interactive setup wizard
+./setup.sh --help       # Show usage information
+./setup.sh --manual     # Skip SF CLI, use manual credential entry
+./setup.sh --validate   # Test existing .env credentials
+```
+
+### What the Setup Wizard Does
+
+1. **Checks prerequisites** — Verifies Node.js, Python, uv, npm are installed
+2. **Detects SF CLI** — If available, enables org selection and direct Setup access
+3. **Guides app creation** — Walks you through creating an External Client App in Salesforce
+4. **Collects credentials** — Prompts for Consumer Key/Secret from your app
+5. **Creates `.env` file** — Writes configuration with secure session secret
+6. **Validates credentials** — Checks format and endpoint reachability
+7. **Starts the app** — Optionally launches both servers
 
 ---
 
@@ -33,7 +137,6 @@
 - 📊 **Release Stats Card** — See new object counts for last 3 Salesforce releases at a glance
 - 🔍 **New Objects Modal** — Click any release to see all new objects with details
 - 🎯 **"New in {Release}" Filter** — One-click filter to show only new objects
-- 💾 **Smart Caching** — Release stats cached for instant version switching
 
 ### 📊 Interactive ERD Canvas
 - 🖱️ **Drag & Drop** — Freely position nodes on the canvas with position memory
@@ -41,7 +144,6 @@
 - 🔄 **Auto-Layout** — One-click Dagre-powered hierarchical layout algorithm
 - 🎯 **Fit View** — Instantly center and fit all nodes in the viewport
 - 🔲 **Compact Mode** — Toggle field visibility for high-level schema overview
-- 💾 **Position Memory** — Your node arrangements are preserved when adding objects
 
 ### 🔗 Relationship Visualization
 - 🛤️ **Smart Edge Routing** — Dynamic edge paths that avoid node overlaps
@@ -50,7 +152,7 @@
 - 🔢 **Cardinality Markers** — Visual N:1 indicators showing relationship direction
 - 🏷️ **Field Name Labels** — See which field (e.g., ParentId) creates each relationship
 - 🎬 **Animated Edges** — Marching ants animation shows data flow direction
-- 📖 **Interactive Legend** — Collapsible legend explaining all visual elements
+- 🔄 **Self-References** — Support for recursive relationships (e.g., Account.ParentId)
 
 ### 📊 Node Metadata Badges
 Real-time metadata badges displayed on each object node:
@@ -60,157 +162,68 @@ Real-time metadata badges displayed on each object node:
 | 🔴 **OWD: Private** | Internal sharing model (red) | `OWD: Private` |
 | 🟡 **OWD: Read** | Internal sharing model (yellow) | `OWD: Read` |
 | 🟢 **OWD: ReadWrite** | Internal sharing model (green) | `OWD: ReadWrite` |
-| 🟠 **Ext: Private** | External sharing model | `Ext: Private` |
 | 🔵 **Count: 5.2M** | Record count (blue) | `Count: 5.2M` |
 | 🟠 **Count: 12M [LDV]** | Large Data Volume indicator (orange) | `Count: 12M [LDV]` |
 
-- Badges load asynchronously after nodes appear (non-blocking)
-- LDV threshold: Objects with >3M records are flagged
-- Record counts formatted: `5,200,000` → `5.2M`, `45,000` → `45K`
-
-### ⚙️ Settings Dropdown
-Customize your diagram view with the Settings button:
-
-**Node Badges:**
-| Toggle | Default | Description |
-|--------|---------|-------------|
-| 🔴 Sharing: Internal | ON | Show internal OWD sharing model |
-| 🟡 Sharing: External | OFF | Show external OWD sharing model |
-| 🟠 Record Counts | ON | Show record count with LDV indicator |
-
-**Diagram:**
-| Toggle | Default | Description |
-|--------|---------|-------------|
-| 🔵 Field Labels | ON | Show field names (ParentId) on relationship lines |
-| 🟣 Animate Edges | ON | Animated flow direction on relationship lines |
-
 ### 🔍 Powerful Filtering & Search
-- ⚡ **Instant Search** — Real-time filtering through 1000+ sObjects as you type
-- 🏷️ **Namespace Filtering** — Filter by All, Standard, Custom (Local), or Packaged objects
+- ⚡ **Instant Search** — Real-time filtering through 1000+ sObjects
+- 🏷️ **Namespace Filtering** — Filter by Standard, Custom, or Packaged objects
 - 📦 **Package Multi-Select** — Filter by specific namespaces (npsp, npe01, etc.)
-- 🎛️ **Object Type Filters** — Toggle visibility of 9 system object categories
-- 👁️ **Show/Hide System Objects** — Keep your ERD clean by hiding Feed, Share, History objects
+- 🎛️ **Object Type Filters** — Toggle visibility of system object categories
 
-### 🏷️ Object Classification Badges
+### 📤 Export Functionality
+- 📸 **PNG Export** — High-resolution diagram images (1x, 2x, 3x)
+- 🖼️ **SVG Export** — Vector graphics for perfect scaling
+- 📋 **JSON Export** — Structured data with nodes, edges, and metadata
+- 📎 **Copy to Clipboard** — Quick PNG copy for documentation
 
-Intelligent badge system to quickly identify object types at a glance:
-
-| Badge | Type | Example Objects |
-|:-----:|------|-----------------|
-| 🔵 `Standard` | Salesforce-provided | Account, Contact, Opportunity |
-| 🟣 `Custom` | Org-created | Invoice__c, Project__c |
-| 🩷 `[npsp]` | Managed package | npsp__General_Accounting_Unit__c |
-
-**System Object Type Badges** (hidden by default for cleaner views):
-
-| | Badge | Suffix | Description |
-|:---:|:-----:|--------|-------------|
-| 🟠 | `Feed` | *Feed | Chatter feed objects |
-| 🟢 | `Share` | *Share | Sharing rule objects |
-| ⬜ | `History` | *History | Field history tracking |
-| 🔴 | `CDC` | *ChangeEvent | Change Data Capture events |
-| 🔷 | `Event` | __e | Platform Events |
-| 🟦 | `External` | __x | External Objects (OData) |
-| 🌊 | `Metadata` | __mdt | Custom Metadata Types |
-| 🟡 | `Big` | __b | Big Objects |
-| 🟣 | `Tag` | *Tag | Tagging objects |
-
-### 🎨 User Interface
-- ↔️ **Resizable Sidebar** — Drag to resize the object picker (200px - 600px)
-- 📂 **Collapsible Sections** — Expand/collapse filter sections to save space
-- 🔢 **Object Count Badge** — See selected count and total matches at a glance
-- 📊 **Stats Panel** — Live count of objects and relationships on canvas
-- ✨ **Modern UI** — Built with Tailwind CSS v4 and shadcn/ui components
-
-### 📦 Object Node Details
-Each node on the canvas displays:
-- 🏷️ **Object Name** — With Standard/Custom/Package badge
-- 🔑 **Key Prefix** — Record ID prefix (e.g., `001` for Account)
-- 📋 **Field List** — All fields with type icons (in expanded mode)
-- 🔗 **Relationship Fields** — Highlighted with reference indicators
-- ➕ **Expand/Collapse** — Toggle individual node field visibility
-
-### 🔎 Click-to-Inspect Detail Modals
-Click any field or relationship to open rich detail modals with comprehensive metadata:
-
-**Field Detail Modal** (~30 properties in 10 sections):
-| Section | Properties Shown |
-|---------|------------------|
-| 🏷️ Identity | API Name, Label, Type, SOAP Type, Length |
-| 🔍 Queryability | Filterable, Sortable, Groupable, Aggregatable |
-| 🔐 Permissions | Createable, Updateable, Nillable, Permissionable |
-| ⚡ Characteristics | Unique, External ID, Case Sensitive, Name Field |
-| 🎛️ Type Flags | Auto Number, Calculated, Defaulted On Create |
-| 🔢 Numeric | Precision, Scale, Digits (when applicable) |
-| 📊 Status | Custom, Deprecated |
-| 💡 Formula | Syntax-highlighted formula (when applicable) |
-| 🔗 Relationships | Reference To, Picklist Values |
-
-**Relationship Detail Modal** (Salesforce Workbench parity):
-- 🏷️ Identity — Relationship Name, Child Object, Field
-- 🔗 Type — Cascade Delete, Restricted Delete indicators
-- 📊 Status — Deprecated indicator
-- 🔀 Junction — Many-to-many relationship details (when applicable)
-
-### 📋 Enhanced Object Detail Panel
-Click any object to see a rich detail panel with 6 organized sections:
-
-| Section | What's Shown |
-|---------|--------------|
-| 📝 Description | Object description (if available) |
-| 🏷️ Identity | API Name, Key Prefix, Plural Label, Namespace, Deployment Status |
-| ⚡ Capabilities | CRUD operations with unique color-coded pills |
-| ✨ Features | Reportable, Activities, Chatter, Triggers, Record Types, MRU |
-| 📦 Object Type | Standard/Custom, Custom Setting, Interface, Subtype badges |
-| 🔗 Quick Links | View/Edit/New Record links to Salesforce |
-
-Plus **Advanced Metadata** (collapsible):
-- 🌐 Network Scope Field
-- ⚙️ Action Overrides with count
-- 📐 Named Layouts with count
-- 🔌 API URLs showing all REST endpoints
-
-### 🏷️ Field Classification Badges
-Fields in the Fields tab show classification badges:
-
-| Badge | Type | Example Fields |
-|:-----:|------|----------------|
-| 🟠 `System` | Audit/identity | Id, CreatedDate, CreatedById, LastModifiedDate |
-| 🔵 `Standard` | Salesforce-provided | Name, BillingCity, Phone |
-| 🟣 `Custom` | User-defined | Invoice_Number__c, Custom_Field__c |
+### ☁️ Data Cloud Support
+- 🟣 **Data Cloud Workspace** — Separate view for DLO/DMO entities
+- 🌊 **DLO Visualization** — Data Lake Objects with teal theme
+- 🟪 **DMO Visualization** — Data Model Objects with purple theme
+- 📊 **Category Badges** — Profile, Engagement, Related, Other
 
 ---
 
-## 🚀 Quick Start
+## 🎮 Usage
 
-```bash
-# Clone the repository
-git clone https://github.com/Jaganpro/sf-schema-viewer.git
-cd sf-schema-viewer
+### Getting Started
+1. **🔐 Connect** — Click "Connect to Salesforce" and authorize with your org credentials
+2. **📋 Browse** — Use the sidebar to search and filter through available objects
+3. **✅ Select** — Check objects to add them to the ERD canvas
+4. **🖱️ Explore** — Drag nodes, zoom with scroll wheel, pan by dragging background
+5. **🔗 Analyze** — Follow relationship lines to understand your data model
 
-# Copy environment template and add your Salesforce credentials
-cp .env.example .env
+### Canvas Controls
 
-# Start both servers (installs dependencies automatically)
-./start.sh
-```
+| Button | Action | Description |
+|--------|--------|-------------|
+| 🔲 **Compact** | Toggle fields | Hide field lists for a cleaner high-level view |
+| 🔄 **Auto Layout** | Reorganize | Apply Dagre algorithm to arrange nodes hierarchically |
+| 🎯 **Fit View** | Center all | Fit all nodes in the viewport with padding |
+| ⚙️ **Settings** | Configure | Toggle badges, field labels, and edge animation |
+| 📤 **Export** | Save diagram | Export as PNG, SVG, or JSON |
 
-Open http://localhost:5173 and click **Connect to Salesforce** 🎉
+### Understanding the Diagram
 
-> **Note**: Press `Ctrl+C` to stop both servers cleanly.
+**Relationship Lines:**
+- `── ── ──` **Dashed Blue** = Lookup relationship (optional reference)
+- `────────` **Solid Purple** = Master-Detail relationship (required, cascade delete)
+- `N` marker indicates the "many" side of the relationship
+
+**Object Badges:**
+- `Standard` = Salesforce-provided object
+- `Custom` = Org-created custom object
+- `[namespace]` = Managed package object (e.g., `[npsp]`)
 
 ---
 
-## 📋 Prerequisites
+## 🔧 Manual Setup
 
-- **Node.js** 18+
-- **Python** 3.11+
-- **uv** (recommended) or pip
-- A Salesforce org with API access
+If you prefer not to use the setup wizard, or need to configure manually:
 
----
-
-## 🔧 Setup
+<details>
+<summary><b>Click to expand manual setup instructions</b></summary>
 
 ### 1. Create a Salesforce External Client App
 
@@ -221,13 +234,17 @@ External Client Apps are Salesforce's newer, more secure OAuth approach (Summer 
 3. Fill in:
    - **Name**: `Schema Viewer`
    - **Distribution State**: `Local`
-4. Enable OAuth:
+4. Enable OAuth (click app → Edit OAuth Settings):
    - **Callback URL**: `http://localhost:8000/auth/callback`
    - **Scopes**:
      - `Access and manage your data (api)`
      - `Perform requests at any time (refresh_token)`
-5. Save and wait ~10 minutes for propagation
-6. Copy the **Consumer Key** and **Consumer Secret**
+5. Configure OAuth Policies (Policies tab → Edit):
+   - **Permitted Users**: `All users may self-authorize`
+   - **Refresh Token Policy**: `Refresh token is valid until revoked`
+   - **IP Relaxation**: `Relax IP restrictions`
+6. Save and wait ~10 minutes for propagation
+7. Copy the **Consumer Key** and **Consumer Secret** (View → Consumer Details)
 
 ### 2. Configure Environment
 
@@ -244,10 +261,11 @@ SESSION_SECRET=generate_a_random_string_here
 FRONTEND_URL=http://localhost:5173
 ```
 
+> **Tip**: Generate a session secret with: `openssl rand -hex 32`
+
 ### 3. Start the App
 
 ```bash
-# One command starts everything!
 ./start.sh
 ```
 
@@ -257,10 +275,7 @@ This will:
 - Start the frontend on http://localhost:5173
 - Handle clean shutdown with `Ctrl+C`
 
-<details>
-<summary><b>Manual startup (alternative)</b></summary>
-
-If you prefer to run servers separately:
+**Manual startup (alternative):**
 
 | Backend | Frontend |
 |---------|----------|
@@ -270,53 +285,11 @@ If you prefer to run servers separately:
 
 ---
 
-## 🎮 Usage
-
-### Getting Started
-1. **🔐 Connect** — Click "Connect to Salesforce" and authorize with your org credentials
-2. **📋 Browse** — Use the sidebar to search and filter through available objects
-3. **✅ Select** — Check objects to add them to the ERD canvas
-4. **🖱️ Explore** — Drag nodes, zoom with scroll wheel, pan by dragging background
-5. **🔗 Analyze** — Follow relationship lines to understand your data model
-
-### Filtering Objects
-1. **Search** — Type in the search box to filter by object name or label
-2. **Namespace** — Use the dropdown to filter:
-   - `All Objects` — Show everything
-   - `Standard Only` — Salesforce-provided objects only
-   - `Custom (Local)` — Your org's custom objects (no package)
-   - `Packaged Only` — Managed package objects → then select specific namespaces
-3. **Object Types** — Expand "Object Type Filters" to show/hide system objects (Feed, Share, History, etc.)
-
-### Canvas Controls
-
-| Button | Action | Description |
-|--------|--------|-------------|
-| 🔲 **Compact** | Toggle fields | Hide field lists for a cleaner high-level view |
-| 🔄 **Auto Layout** | Reorganize | Apply Dagre algorithm to arrange nodes hierarchically |
-| 🎯 **Fit View** | Center all | Fit all nodes in the viewport with padding |
-| ⚙️ **Settings** | Configure | Toggle badges, field labels, and edge animation |
-| ➕➖ **Zoom** | Scale view | Use controls or mouse wheel (0.1x - 2x) |
-
-### Understanding the Diagram
-
-**Relationship Lines:**
-- `── ── ──` **Dashed Blue** = Lookup relationship (optional reference)
-- `────────` **Solid Purple** = Master-Detail relationship (required, cascade delete)
-- `N` marker indicates the "many" side of the relationship
-
-**Object Badges:**
-- `Standard` = Salesforce-provided object
-- `Custom` = Org-created custom object
-- `[namespace]` = Managed package object (e.g., `[npsp]`)
-
----
-
 ## 🛠 Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | React 18, TypeScript, Vite |
+| **Frontend** | React 19, TypeScript, Vite |
 | **Styling** | Tailwind CSS v4, shadcn/ui |
 | **Icons** | Lucide React |
 | **Visualization** | React Flow, Dagre |
@@ -331,40 +304,34 @@ If you prefer to run servers separately:
 
 ```
 sf-schema-viewer/
+├── setup.sh                 # Interactive setup wizard (NEW)
+├── start.sh                 # Start both servers
+├── .env.example             # Environment template
+│
 ├── backend/                 # FastAPI Python backend
 │   ├── main.py              # App entry point
 │   ├── config.py            # Environment config
 │   ├── routers/
 │   │   ├── auth.py          # OAuth endpoints
-│   │   └── schema.py        # Schema API endpoints
+│   │   ├── schema.py        # Schema API endpoints
+│   │   └── datacloud.py     # Data Cloud API
 │   ├── services/
-│   │   └── salesforce.py    # SF API client
-│   └── models/
-│       └── schema.py        # Pydantic models (100% API coverage)
+│   │   ├── salesforce.py    # SF API client
+│   │   └── datacloud.py     # Data Cloud service
+│   └── models/              # Pydantic models
 │
 ├── frontend/                # Vite + React + TypeScript
 │   └── src/
 │       ├── components/
 │       │   ├── ui/          # shadcn/ui components
 │       │   ├── flow/        # React Flow components
-│       │   │   ├── SchemaFlow.tsx
-│       │   │   ├── ObjectNode.tsx
-│       │   │   ├── SmartEdge.tsx
-│       │   │   └── SettingsDropdown.tsx
 │       │   ├── layout/      # Layout components
-│       │   └── sidebar/     # Object picker & detail modals
-│       │       ├── ObjectPicker.tsx
-│       │       ├── ObjectDetailPanel.tsx
-│       │       ├── FieldDetailModal.tsx
-│       │       ├── RelationshipDetailModal.tsx
-│       │       └── NewObjectsModal.tsx
-│       ├── lib/             # Utilities (cn helper)
+│       │   └── sidebar/     # Object picker & panels
 │       ├── store/           # Zustand state
-│       ├── utils/           # Transformers, layout, icons
+│       ├── utils/           # Transformers, layout
 │       └── types/           # TypeScript definitions
 │
-├── docs/                    # Documentation & screenshots
-└── .env.example             # Environment template
+└── docs/                    # Documentation
 ```
 
 ---
@@ -377,11 +344,66 @@ sf-schema-viewer/
 | `/auth/callback` | GET | OAuth callback handler |
 | `/auth/status` | GET | Check authentication status |
 | `/auth/logout` | POST | Clear session and logout |
-| `/auth/refresh` | POST | Refresh access token using refresh token |
+| `/auth/refresh` | POST | Refresh access token |
+| `/auth/session-info` | GET | Get detailed session metadata |
 | `/api/objects` | GET | List all sObjects in the org |
 | `/api/objects/{name}/describe` | GET | Get full describe for one object |
 | `/api/objects/describe` | POST | Batch describe multiple objects |
-| `/api/objects/enrichment` | POST | Get OWD and record counts for objects |
+| `/api/objects/enrichment` | POST | Get OWD and record counts |
+| `/api/api-versions` | GET | List available API versions |
+| `/api/datacloud/status` | GET | Check Data Cloud availability |
+| `/api/datacloud/entities` | GET | List Data Cloud entities |
+
+---
+
+## ❓ Troubleshooting
+
+<details>
+<summary><b>OAuth Callback Error</b></summary>
+
+**Symptom**: Redirect error after Salesforce login
+
+**Solutions**:
+1. Verify callback URL in External Client App matches exactly: `http://localhost:8000/auth/callback`
+2. Wait 10+ minutes after creating the app for propagation
+3. Clear browser cookies and try again
+4. Check that all required OAuth scopes are enabled
+
+</details>
+
+<details>
+<summary><b>External Client App not appearing</b></summary>
+
+**Symptom**: Can't find the app in Setup after deployment
+
+**Solutions**:
+1. Wait 5-10 minutes for the app to appear
+2. Search for "Schema Viewer" in Setup
+3. Check External Client App Manager (not regular App Manager)
+4. Verify deployment succeeded in setup.sh output
+
+</details>
+
+<details>
+<summary><b>Scratch Org Issues</b></summary>
+
+**Symptom**: Deployment fails with scratch org
+
+**Solution**: External Client Apps don't work in scratch orgs. Use a Developer Edition, sandbox, or production org instead.
+
+</details>
+
+<details>
+<summary><b>Connection Issues</b></summary>
+
+**Symptom**: Can't reach Salesforce
+
+**Solutions**:
+1. Check VPN/network connectivity
+2. Verify org is accessible via browser
+3. Try `sf org login web` to re-authenticate
+
+</details>
 
 ---
 

@@ -142,18 +142,25 @@ class SessionStore:
             return True
         return False
 
-    def create_oauth_state(self) -> str:
-        """Create a state token for OAuth CSRF protection."""
+    def create_oauth_state(self, code_verifier: str) -> str:
+        """Create a state token for OAuth CSRF protection.
+
+        Also stores the PKCE code_verifier for later retrieval during token exchange.
+        """
         state = secrets.token_urlsafe(32)
-        self._pending_states[state] = ""
+        self._pending_states[state] = code_verifier
         return state
 
-    def validate_oauth_state(self, state: str) -> bool:
-        """Validate and consume an OAuth state token."""
+    def validate_oauth_state(self, state: str) -> tuple[bool, str | None]:
+        """Validate and consume an OAuth state token.
+
+        Returns (is_valid, code_verifier) tuple.
+        """
         if state in self._pending_states:
+            code_verifier = self._pending_states[state]
             del self._pending_states[state]
-            return True
-        return False
+            return True, code_verifier
+        return False, None
 
     def cleanup_expired(self) -> int:
         """Remove all expired sessions. Returns count of removed sessions."""

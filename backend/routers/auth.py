@@ -1,11 +1,27 @@
 """OAuth authentication routes for Salesforce."""
 
+import base64
+import hashlib
 import secrets
 from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Cookie, HTTPException, Response
 from fastapi.responses import RedirectResponse
+
+
+def generate_code_verifier() -> str:
+    """Generate a PKCE code verifier (43-128 characters)."""
+    # Generate 32 bytes = 43 base64url characters
+    return secrets.token_urlsafe(32)
+
+
+def generate_code_challenge(code_verifier: str) -> str:
+    """Generate a PKCE code challenge from the verifier using SHA256."""
+    # SHA256 hash of the verifier
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    # Base64url encode (no padding)
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 from config import settings
 from models.auth import (
@@ -45,7 +61,7 @@ def get_api_version_label(version: str) -> str:
 
 @router.get("/login")
 async def login():
-    """Initiate Salesforce OAuth flow.
+    """Initiate Salesforce OAuth flow with PKCE.
 
     Redirects the user to Salesforce authorization page.
     """
@@ -55,17 +71,24 @@ async def login():
             detail="SF_CLIENT_ID not configured. Check your .env file.",
         )
 
-    # Create state for CSRF protection
-    state = session_store.create_oauth_state()
+    # Generate PKCE code verifier and challenge
+    code_verifier = generate_code_verifier()
+    code_challenge = generate_code_challenge(code_verifier)
 
-    # Build authorization URL
-    # Include Data Cloud scopes for CDP/Data Cloud API access
+    # Create state for CSRF protection (also stores code_verifier for callback)
+    state = session_store.create_oauth_state(code_verifier)
+
+    # Build authorization URL with PKCE parameters
+    # Only request essential scopes - Data Cloud scopes are optional and require
+    # both org enablement AND app configuration
     params = {
         "response_type": "code",
         "client_id": settings.SF_CLIENT_ID,
         "redirect_uri": settings.SF_CALLBACK_URL,
-        "scope": "api refresh_token cdp_query_api cdp_profile_api cdp_ingest_api",
+        "scope": "api refresh_token",
         "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
     }
     auth_url = f"{settings.SF_AUTH_URL}?{urlencode(params)}"
 
@@ -73,16 +96,40 @@ async def login():
 
 
 @router.get("/callback")
-async def callback(code: str, state: str, response: Response):
+async def callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
+):
     """Handle OAuth callback from Salesforce.
 
     Exchanges authorization code for access tokens.
     """
-    # Validate state to prevent CSRF
-    if not session_store.validate_oauth_state(state):
-        raise HTTPException(status_code=400, detail="Invalid state parameter")
+    # Handle Salesforce OAuth errors (user denied access, etc.)
+    if error:
+        error_msg = error_description or error
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}?auth_error={error_msg}",
+            status_code=302,
+        )
 
-    # Exchange code for tokens
+    # Handle direct access without OAuth flow (missing code/state)
+    if not code or not state:
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}?auth_error=Invalid callback - please use the Connect to Salesforce button",
+            status_code=302,
+        )
+
+    # Validate state to prevent CSRF and retrieve code_verifier for PKCE
+    is_valid, code_verifier = session_store.validate_oauth_state(state)
+    if not is_valid:
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}?auth_error=Invalid state parameter - please try logging in again",
+            status_code=302,
+        )
+
+    # Exchange code for tokens (with PKCE code_verifier)
     async with httpx.AsyncClient() as client:
         token_response = await client.post(
             settings.SF_TOKEN_URL,
@@ -92,13 +139,14 @@ async def callback(code: str, state: str, response: Response):
                 "client_id": settings.SF_CLIENT_ID,
                 "client_secret": settings.SF_CLIENT_SECRET,
                 "redirect_uri": settings.SF_CALLBACK_URL,
+                "code_verifier": code_verifier,
             },
         )
 
     if token_response.status_code != 200:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Failed to exchange code for tokens: {token_response.text}",
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}?auth_error=Failed to authenticate with Salesforce",
+            status_code=302,
         )
 
     tokens = token_response.json()
@@ -111,9 +159,9 @@ async def callback(code: str, state: str, response: Response):
         )
 
     if user_response.status_code != 200:
-        raise HTTPException(
-            status_code=400,
-            detail="Failed to get user info from Salesforce",
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}?auth_error=Failed to get user info from Salesforce",
+            status_code=302,
         )
 
     user_info = user_response.json()
