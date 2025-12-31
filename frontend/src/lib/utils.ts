@@ -34,8 +34,14 @@ export function cn(...inputs: ClassValue[]) {
  * Maps Salesforce field types to Lucide React icons.
  * Returns a React element for the appropriate icon.
  */
-export function getFieldTypeIcon(fieldType: string) {
+export function getFieldTypeIcon(fieldType: string | undefined | null) {
   const iconClass = 'h-3.5 w-3.5'
+
+  // Handle undefined/null field types gracefully
+  if (!fieldType) {
+    return createElement(CircleDot, { className: iconClass })
+  }
+
   const type = fieldType.toLowerCase()
 
   const iconMap: Record<string, typeof Type> = {

@@ -1,11 +1,13 @@
 /**
  * Application header with authentication controls.
  * Includes clickable session info that opens a detailed modal.
+ * Features workspace tabs to switch between Salesforce Core and Data Cloud views.
  */
 
-import { useState } from 'react';
-import { BarChart3, LogIn, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BarChart3, LogIn, LogOut, Cloud, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useAppStore } from '../../store';
 import { api } from '../../api/client';
 import { SessionInfoModal } from './SessionInfoModal';
@@ -15,9 +17,29 @@ export default function Header() {
     authStatus,
     isLoadingAuth,
     logout,
+    activeWorkspace,
+    setActiveWorkspace,
+    dcIsEnabled,
+    dcIsCheckingStatus,
+    checkDataCloudStatus,
+    loadDataCloudEntities,
   } = useAppStore();
 
   const [showSessionInfo, setShowSessionInfo] = useState(false);
+
+  // Check Data Cloud status when authenticated
+  useEffect(() => {
+    if (authStatus?.is_authenticated && dcIsEnabled === null && !dcIsCheckingStatus) {
+      checkDataCloudStatus();
+    }
+  }, [authStatus?.is_authenticated, dcIsEnabled, dcIsCheckingStatus, checkDataCloudStatus]);
+
+  // Load DC entities when switching to Data Cloud workspace
+  useEffect(() => {
+    if (activeWorkspace === 'datacloud' && dcIsEnabled) {
+      loadDataCloudEntities();
+    }
+  }, [activeWorkspace, dcIsEnabled, loadDataCloudEntities]);
 
   const handleLogin = () => {
     api.auth.login();
@@ -74,6 +96,45 @@ export default function Header() {
                   )}
                 </span>
               </button>
+
+              {/* Workspace Tabs */}
+              <div className="flex gap-1 bg-white/10 rounded-lg p-0.5">
+                <button
+                  onClick={() => setActiveWorkspace('core')}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
+                    activeWorkspace === 'core'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  )}
+                >
+                  <Database className="h-3.5 w-3.5" />
+                  Core
+                </button>
+                <button
+                  onClick={() => dcIsEnabled && setActiveWorkspace('datacloud')}
+                  disabled={dcIsEnabled === false}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
+                    activeWorkspace === 'datacloud'
+                      ? 'bg-white text-purple-600 shadow-sm'
+                      : 'text-white/80 hover:text-white hover:bg-white/10',
+                    dcIsEnabled === false && 'opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/80',
+                    dcIsCheckingStatus && 'animate-pulse'
+                  )}
+                  title={
+                    dcIsCheckingStatus
+                      ? 'Checking Data Cloud status...'
+                      : dcIsEnabled === false
+                      ? 'Data Cloud is not enabled for this org'
+                      : 'Switch to Data Cloud view'
+                  }
+                >
+                  <Cloud className="h-3.5 w-3.5" />
+                  Data Cloud
+                </button>
+              </div>
+
               <Button variant="sfGhost" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout

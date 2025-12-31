@@ -1,6 +1,12 @@
 """Service modules for Salesforce API and session management."""
 
-from .session import SessionStore, session_store
+from .datacloud import DataCloudService
 from .salesforce import SalesforceService
+from .session import SessionStore, session_store
 
-__all__ = ["SessionStore", "session_store", "SalesforceService"]
+__all__ = [
+    "DataCloudService",
+    "SalesforceService",
+    "SessionStore",
+    "session_store",
+]

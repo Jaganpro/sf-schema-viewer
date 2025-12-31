@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import auth_router, schema_router
+from routers import auth_router, datacloud_router, schema_router
 
 app = FastAPI(
     title="Salesforce Schema Viewer API",
@@ -24,6 +24,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router)
 app.include_router(schema_router)
+app.include_router(datacloud_router)
 
 
 @app.get("/")

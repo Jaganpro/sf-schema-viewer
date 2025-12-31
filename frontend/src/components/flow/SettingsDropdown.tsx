@@ -14,15 +14,18 @@ type SettingConfig = {
   label: string;
   description: string;
   colors: { bg: string; border: string; text: string };
+  coreOnly?: boolean;  // If true, only show in Core workspace
 };
 
 // Grouped settings configuration
 const SETTINGS_GROUPS: Array<{
   title: string;
+  coreOnly?: boolean;  // If true, hide entire group in DC workspace
   settings: SettingConfig[];
 }> = [
   {
     title: 'Node Badges',
+    coreOnly: true,  // OWD and record counts are Core-specific
     settings: [
       {
         key: 'showInternalSharing',
@@ -58,6 +61,7 @@ const SETTINGS_GROUPS: Array<{
         label: 'Show All Connections',
         description: 'Display all relationship edges between objects (vs single representative)',
         colors: { bg: 'bg-violet-100', border: 'border-violet-300', text: 'text-violet-700' },
+        coreOnly: true,  // DC doesn't have edge deduplication logic
       },
       {
         key: 'showEdgeLabels',
@@ -86,6 +90,8 @@ export function SettingsDropdown() {
   const badgeSettings = useAppStore((state) => state.badgeSettings);
   const toggleBadgeSetting = useAppStore((state) => state.toggleBadgeSetting);
   const toggleSettingsDropdown = useAppStore((state) => state.toggleSettingsDropdown);
+  const activeWorkspace = useAppStore((state) => state.activeWorkspace);
+  const isDataCloud = activeWorkspace === 'datacloud';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -124,36 +130,46 @@ export function SettingsDropdown() {
 
       {/* Grouped toggle options */}
       <div className="p-2">
-        {SETTINGS_GROUPS.map((group, groupIndex) => (
-          <div key={group.title} className={groupIndex > 0 ? 'mt-3 pt-2 border-t border-gray-100' : ''}>
-            {/* Group header */}
-            <div className="px-1 pb-1.5 text-[10px] text-sf-text-muted uppercase tracking-wide font-semibold">
-              {group.title}
-            </div>
-            {/* Group settings */}
-            <div className="space-y-1">
-              {group.settings.map((setting) => {
-                const isActive = badgeSettings[setting.key];
-                return (
-                  <button
-                    key={setting.key}
-                    onClick={() => toggleBadgeSetting(setting.key)}
-                    className={cn(
-                      'w-full px-2.5 py-1.5 text-xs rounded-sm border transition-all flex items-center justify-between font-medium',
-                      isActive
-                        ? `${setting.colors.bg} ${setting.colors.border} ${setting.colors.text}`
-                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-500'
-                    )}
-                    title={setting.description}
-                  >
-                    <span>{setting.label}</span>
-                    {isActive && <Check className="h-3 w-3 ml-2" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+        {SETTINGS_GROUPS
+          .filter(group => !isDataCloud || !group.coreOnly)
+          .map((group, groupIndex) => {
+            // Filter out coreOnly settings when in DC workspace
+            const visibleSettings = group.settings.filter(
+              setting => !isDataCloud || !setting.coreOnly
+            );
+            if (visibleSettings.length === 0) return null;
+
+            return (
+              <div key={group.title} className={groupIndex > 0 ? 'mt-3 pt-2 border-t border-gray-100' : ''}>
+                {/* Group header */}
+                <div className="px-1 pb-1.5 text-[10px] text-sf-text-muted uppercase tracking-wide font-semibold">
+                  {group.title}
+                </div>
+                {/* Group settings */}
+                <div className="space-y-1">
+                  {visibleSettings.map((setting) => {
+                    const isActive = badgeSettings[setting.key];
+                    return (
+                      <button
+                        key={setting.key}
+                        onClick={() => toggleBadgeSetting(setting.key)}
+                        className={cn(
+                          'w-full px-2.5 py-1.5 text-xs rounded-sm border transition-all flex items-center justify-between font-medium',
+                          isActive
+                            ? `${setting.colors.bg} ${setting.colors.border} ${setting.colors.text}`
+                            : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-500'
+                        )}
+                        title={setting.description}
+                      >
+                        <span>{setting.label}</span>
+                        {isActive && <Check className="h-3 w-3 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
       </div>
     </div>
   );

@@ -59,11 +59,12 @@ async def login():
     state = session_store.create_oauth_state()
 
     # Build authorization URL
+    # Include Data Cloud scopes for CDP/Data Cloud API access
     params = {
         "response_type": "code",
         "client_id": settings.SF_CLIENT_ID,
         "redirect_uri": settings.SF_CALLBACK_URL,
-        "scope": "api refresh_token",
+        "scope": "api refresh_token cdp_query_api cdp_profile_api cdp_ingest_api",
         "state": state,
     }
     auth_url = f"{settings.SF_AUTH_URL}?{urlencode(params)}"

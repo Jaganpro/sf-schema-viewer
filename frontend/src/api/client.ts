@@ -11,6 +11,12 @@ import type {
   ObjectEnrichmentResponse,
   SessionInfo,
 } from '../types/schema';
+import type {
+  DataCloudBatchDescribeResponse,
+  DataCloudEntityBasicInfo,
+  DataCloudEntityDescribe,
+  DataCloudStatusResponse,
+} from '../types/datacloud';
 
 class ApiError extends Error {
   status: number;
@@ -102,6 +108,30 @@ export const api = {
         body: JSON.stringify({ object_names: objectNames }),
       });
     },
+  },
+
+  // Data Cloud operations
+  datacloud: {
+    /** Check if Data Cloud is enabled for this org */
+    checkStatus: (): Promise<DataCloudStatusResponse> =>
+      fetchJson('/api/datacloud/status'),
+
+    /** Get list of all Data Cloud entities (DLOs and DMOs) */
+    listEntities: (entityType?: string): Promise<DataCloudEntityBasicInfo[]> => {
+      const params = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : '';
+      return fetchJson(`/api/datacloud/entities${params}`);
+    },
+
+    /** Get full describe for a single entity */
+    describeEntity: (entityName: string): Promise<DataCloudEntityDescribe> =>
+      fetchJson(`/api/datacloud/entities/${encodeURIComponent(entityName)}/describe`),
+
+    /** Describe multiple entities in one request */
+    describeEntities: (entityNames: string[]): Promise<DataCloudBatchDescribeResponse> =>
+      fetchJson('/api/datacloud/entities/describe', {
+        method: 'POST',
+        body: JSON.stringify({ entity_names: entityNames }),
+      }),
   },
 };
 

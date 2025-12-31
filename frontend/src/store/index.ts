@@ -12,11 +12,21 @@ import type {
   ObjectDescribe,
   ObjectEnrichmentInfo,
 } from '../types/schema';
+import type {
+  DataCloudEntityBasicInfo,
+  DataCloudEntityDescribe,
+  DataCloudEntityType,
+} from '../types/datacloud';
 import type { ObjectNodeData } from '../components/flow/ObjectNode';
 import { api } from '../api/client';
 import { transformToFlowElements } from '../utils/transformers';
 import { applyDagreLayout } from '../utils/layout';
 import { CLOUD_PACKS } from '../data/cloudPacks';
+
+/**
+ * Workspace type - determines which view is active
+ */
+export type Workspace = 'core' | 'datacloud';
 
 /**
  * Object type filter state - controls visibility of system object types.
@@ -189,6 +199,30 @@ interface AppState {
   // Error state
   error: string | null;
 
+  // ===== WORKSPACE STATE =====
+  activeWorkspace: Workspace;
+
+  // ===== DATA CLOUD STATE =====
+  // DC status
+  dcIsEnabled: boolean | null;  // null = not checked yet
+  dcIsCheckingStatus: boolean;
+
+  // DC entities (mirrors Core pattern)
+  dcAvailableEntities: DataCloudEntityBasicInfo[];
+  dcSelectedEntityNames: string[];
+  dcDescribedEntities: Map<string, DataCloudEntityDescribe>;
+  dcIsLoadingEntities: boolean;
+  dcIsLoadingDescribe: boolean;
+
+  // DC flow (separate from Core)
+  dcNodes: Node[];
+  dcEdges: Edge[];
+
+  // DC UI state
+  dcFocusedEntityName: string | null;
+  dcSearchTerm: string;
+  dcEntityTypeFilter: Set<DataCloudEntityType>;
+
   // Actions
   checkAuth: () => Promise<void>;
   logout: () => Promise<void>;
@@ -242,6 +276,22 @@ interface AppState {
   toggleExportDropdown: () => void;
   setExportSetting: <K extends keyof ExportSettings>(key: K, value: ExportSettings[K]) => void;
   setIsExporting: (loading: boolean) => void;
+
+  // ===== WORKSPACE ACTIONS =====
+  setActiveWorkspace: (workspace: Workspace) => void;
+
+  // ===== DATA CLOUD ACTIONS =====
+  checkDataCloudStatus: () => Promise<void>;
+  loadDataCloudEntities: () => Promise<void>;
+  selectDataCloudEntities: (names: string[]) => Promise<void>;
+  addDataCloudEntity: (name: string) => Promise<void>;
+  removeDataCloudEntity: (name: string) => void;
+  setDcFocusedEntity: (name: string | null) => void;
+  setDcSearchTerm: (term: string) => void;
+  toggleDcEntityTypeFilter: (type: DataCloudEntityType) => void;
+  applyDcLayout: () => void;
+  refreshDcEdges: () => void;  // Recalculate DC edges only (preserves node positions)
+  clearDataCloudSelections: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -285,6 +335,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   showExportDropdown: false,
   isExporting: false,
   error: null,
+
+  // ===== WORKSPACE INITIAL STATE =====
+  activeWorkspace: 'core',
+
+  // ===== DATA CLOUD INITIAL STATE =====
+  dcIsEnabled: null,
+  dcIsCheckingStatus: false,
+  dcAvailableEntities: [],
+  dcSelectedEntityNames: [],
+  dcDescribedEntities: new Map(),
+  dcIsLoadingEntities: false,
+  dcIsLoadingDescribe: false,
+  dcNodes: [],
+  dcEdges: [],
+  dcFocusedEntityName: null,
+  dcSearchTerm: '',
+  dcEntityTypeFilter: new Set(['DataLakeObject', 'DataModelObject'] as DataCloudEntityType[]),
 
   // Actions
   checkAuth: async () => {
@@ -1161,5 +1228,344 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setIsExporting: (loading: boolean) => {
     set({ isExporting: loading });
+  },
+
+  // ===== WORKSPACE ACTIONS =====
+  setActiveWorkspace: (workspace: Workspace) => {
+    set({ activeWorkspace: workspace });
+  },
+
+  // ===== DATA CLOUD ACTIONS =====
+  checkDataCloudStatus: async () => {
+    set({ dcIsCheckingStatus: true });
+    try {
+      const status = await api.datacloud.checkStatus();
+      set({
+        dcIsEnabled: status.is_enabled,
+        dcIsCheckingStatus: false,
+      });
+    } catch {
+      set({
+        dcIsEnabled: false,
+        dcIsCheckingStatus: false,
+      });
+    }
+  },
+
+  loadDataCloudEntities: async () => {
+    set({ dcIsLoadingEntities: true, error: null });
+    try {
+      const entities = await api.datacloud.listEntities();
+      set({
+        dcAvailableEntities: entities,
+        dcIsLoadingEntities: false,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load Data Cloud entities';
+      set({ dcIsLoadingEntities: false, error: message });
+    }
+  },
+
+  selectDataCloudEntities: async (names: string[]) => {
+    const { dcDescribedEntities } = get();
+
+    // Find entities that need to be described
+    const toDescribe = names.filter((name) => !dcDescribedEntities.has(name));
+
+    if (toDescribe.length > 0) {
+      set({ dcIsLoadingDescribe: true, error: null });
+      try {
+        const response = await api.datacloud.describeEntities(toDescribe);
+        const newDescribed = new Map(dcDescribedEntities);
+        for (const entity of response.entities) {
+          newDescribed.set(entity.name, entity);
+        }
+        set({ dcDescribedEntities: newDescribed });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to describe Data Cloud entities';
+        set({ error: message });
+      }
+      set({ dcIsLoadingDescribe: false });
+    }
+
+    set({ dcSelectedEntityNames: names });
+
+    // Update flow elements
+    get().applyDcLayout();
+  },
+
+  addDataCloudEntity: async (name: string) => {
+    const { dcSelectedEntityNames, dcDescribedEntities, dcNodes } = get();
+
+    if (dcSelectedEntityNames.includes(name)) {
+      return; // Already selected
+    }
+
+    // Describe if not already described
+    if (!dcDescribedEntities.has(name)) {
+      set({ dcIsLoadingDescribe: true, error: null });
+      try {
+        const describe = await api.datacloud.describeEntity(name);
+        const newDescribed = new Map(dcDescribedEntities);
+        newDescribed.set(name, describe);
+        set({ dcDescribedEntities: newDescribed });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : `Failed to describe ${name}`;
+        set({ dcIsLoadingDescribe: false, error: message });
+        return;
+      }
+      set({ dcIsLoadingDescribe: false });
+    }
+
+    const newSelected = [...dcSelectedEntityNames, name];
+    set({ dcSelectedEntityNames: newSelected });
+
+    // Position new node to the right of existing nodes
+    let newX = 100;
+    let newY = 100;
+    if (dcNodes.length > 0) {
+      let maxX = 0;
+      let sumY = 0;
+      dcNodes.forEach(n => {
+        maxX = Math.max(maxX, n.position.x + 300);
+        sumY += n.position.y;
+      });
+      newX = maxX;
+      newY = sumY / dcNodes.length;
+    }
+
+    // Get the describe and create a simple node
+    const entity = get().dcDescribedEntities.get(name);
+    if (entity) {
+      const newNode: Node = {
+        id: name,
+        type: 'dataCloudNode',
+        position: { x: newX, y: newY },
+        data: {
+          label: entity.display_name || entity.name,
+          apiName: entity.name,
+          entityType: entity.entity_type,
+          category: entity.category,
+          isStandard: entity.is_standard,
+          fields: entity.fields,
+          primaryKeys: entity.primary_keys,
+          collapsed: false,
+        },
+      };
+
+      // Preserve existing node positions
+      const existingPositions = new Map(dcNodes.map(n => [n.id, n.position]));
+      const updatedNodes = [...dcNodes.filter(n => n.id !== name), newNode];
+
+      // Create edges from relationships (respecting showSelfReferences)
+      const { badgeSettings } = get();
+      const newEdges: Edge[] = [];
+      const updatedDescribed = get().dcDescribedEntities;
+      const allSelected = get().dcSelectedEntityNames;
+
+      for (const entityName of allSelected) {
+        const desc = updatedDescribed.get(entityName);
+        if (!desc) continue;
+
+        for (const rel of desc.relationships) {
+          if (allSelected.includes(rel.to_entity)) {
+            // Skip self-referential edges unless the setting is enabled
+            if (entityName === rel.to_entity && !badgeSettings.showSelfReferences) {
+              continue;
+            }
+            newEdges.push({
+              id: `${entityName}-${rel.from_field}-${rel.to_entity}`,
+              source: entityName,
+              target: rel.to_entity,
+              type: 'simpleFloating',
+              data: {
+                fieldName: rel.from_field,
+                relationshipType: rel.relationship_type || 'Lookup',
+              },
+            });
+          }
+        }
+      }
+
+      set({
+        dcNodes: updatedNodes.map(n => ({
+          ...n,
+          position: existingPositions.get(n.id) ?? n.position,
+        })),
+        dcEdges: newEdges,
+      });
+    }
+  },
+
+  removeDataCloudEntity: (name: string) => {
+    const { dcSelectedEntityNames, dcNodes, dcDescribedEntities, badgeSettings } = get();
+
+    const newSelected = dcSelectedEntityNames.filter((n) => n !== name);
+    set({ dcSelectedEntityNames: newSelected });
+
+    if (newSelected.length === 0) {
+      set({ dcNodes: [], dcEdges: [] });
+      return;
+    }
+
+    // Remove node and recalculate edges
+    const updatedNodes = dcNodes.filter(n => n.id !== name);
+
+    // Recalculate edges (respecting showSelfReferences)
+    const newEdges: Edge[] = [];
+    for (const entityName of newSelected) {
+      const desc = dcDescribedEntities.get(entityName);
+      if (!desc) continue;
+
+      for (const rel of desc.relationships) {
+        if (newSelected.includes(rel.to_entity)) {
+          // Skip self-referential edges unless the setting is enabled
+          if (entityName === rel.to_entity && !badgeSettings.showSelfReferences) {
+            continue;
+          }
+          newEdges.push({
+            id: `${entityName}-${rel.from_field}-${rel.to_entity}`,
+            source: entityName,
+            target: rel.to_entity,
+            type: 'simpleFloating',
+            data: {
+              fieldName: rel.from_field,
+              relationshipType: rel.relationship_type || 'Lookup',
+            },
+          });
+        }
+      }
+    }
+
+    set({ dcNodes: updatedNodes, dcEdges: newEdges });
+  },
+
+  setDcFocusedEntity: (name: string | null) => {
+    set({ dcFocusedEntityName: name });
+  },
+
+  setDcSearchTerm: (term: string) => {
+    set({ dcSearchTerm: term });
+  },
+
+  toggleDcEntityTypeFilter: (type: DataCloudEntityType) => {
+    set((state) => {
+      const newFilter = new Set(state.dcEntityTypeFilter);
+      if (newFilter.has(type)) {
+        newFilter.delete(type);
+      } else {
+        newFilter.add(type);
+      }
+      return { dcEntityTypeFilter: newFilter };
+    });
+  },
+
+  applyDcLayout: () => {
+    const { dcSelectedEntityNames, dcDescribedEntities } = get();
+
+    if (dcSelectedEntityNames.length === 0) {
+      set({ dcNodes: [], dcEdges: [] });
+      return;
+    }
+
+    // Create nodes from described entities
+    const nodes: Node[] = [];
+    for (const name of dcSelectedEntityNames) {
+      const entity = dcDescribedEntities.get(name);
+      if (!entity) continue;
+
+      nodes.push({
+        id: name,
+        type: 'dataCloudNode',
+        position: { x: 0, y: 0 }, // Will be set by layout
+        data: {
+          label: entity.display_name || entity.name,
+          apiName: entity.name,
+          entityType: entity.entity_type,
+          category: entity.category,
+          isStandard: entity.is_standard,
+          fields: entity.fields,
+          primaryKeys: entity.primary_keys,
+          collapsed: false,
+        },
+      });
+    }
+
+    // Create edges from relationships (respecting showSelfReferences setting)
+    const { badgeSettings } = get();
+    const edges: Edge[] = [];
+    for (const name of dcSelectedEntityNames) {
+      const entity = dcDescribedEntities.get(name);
+      if (!entity) continue;
+
+      for (const rel of entity.relationships) {
+        if (dcSelectedEntityNames.includes(rel.to_entity)) {
+          // Skip self-referential edges unless the setting is enabled
+          if (name === rel.to_entity && !badgeSettings.showSelfReferences) {
+            continue;
+          }
+          edges.push({
+            id: `${name}-${rel.from_field}-${rel.to_entity}`,
+            source: name,
+            target: rel.to_entity,
+            type: 'simpleFloating',
+            data: {
+              fieldName: rel.from_field,
+              relationshipType: rel.relationship_type || 'Lookup',
+            },
+          });
+        }
+      }
+    }
+
+    // Apply Dagre layout
+    const layouted = applyDagreLayout(nodes, edges);
+
+    set({ dcNodes: layouted.nodes, dcEdges: layouted.edges });
+  },
+
+  // Recalculate DC edges only, preserving node positions
+  // Used when self-references or connection settings change
+  refreshDcEdges: () => {
+    const { dcSelectedEntityNames, dcDescribedEntities, dcNodes, badgeSettings } = get();
+
+    if (dcSelectedEntityNames.length === 0) return;
+
+    // Recalculate edges (respecting showSelfReferences setting)
+    const newEdges: Edge[] = [];
+    for (const name of dcSelectedEntityNames) {
+      const entity = dcDescribedEntities.get(name);
+      if (!entity) continue;
+
+      for (const rel of entity.relationships) {
+        if (dcSelectedEntityNames.includes(rel.to_entity)) {
+          // Skip self-referential edges unless the setting is enabled
+          if (name === rel.to_entity && !badgeSettings.showSelfReferences) {
+            continue;
+          }
+          newEdges.push({
+            id: `${name}-${rel.from_field}-${rel.to_entity}`,
+            source: name,
+            target: rel.to_entity,
+            type: 'simpleFloating',
+            data: {
+              fieldName: rel.from_field,
+              relationshipType: rel.relationship_type || 'Lookup',
+            },
+          });
+        }
+      }
+    }
+
+    set({ dcEdges: newEdges });
+  },
+
+  clearDataCloudSelections: () => {
+    set({
+      dcSelectedEntityNames: [],
+      dcFocusedEntityName: null,
+      dcNodes: [],
+      dcEdges: [],
+    });
   },
 }));

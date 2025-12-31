@@ -1,8 +1,9 @@
 /**
  * Main React Flow container for the schema visualization.
+ * Workspace-aware: switches between Core (SF objects) and Data Cloud (DLO/DMO) views.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -22,20 +23,25 @@ import {
   ChevronUp,
   Settings,
   Download,
+  Database,
+  Cloud,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 import ObjectNode from './ObjectNode';
 import type { ObjectNodeData } from './ObjectNode';
+import DataCloudNode from './DataCloudNode';
+import type { DataCloudNodeData } from './DataCloudNode';
 import SmartEdge, { EdgeMarkerDefs } from './SmartEdge';
 import { SettingsDropdown } from './SettingsDropdown';
 import { ExportDropdown } from './ExportDropdown';
 import { useAppStore } from '../../store';
 
-// Register custom node and edge types
+// Register custom node and edge types - includes both Core and Data Cloud nodes
 const nodeTypes = {
   objectNode: ObjectNode,
+  dataCloudNode: DataCloudNode,
 };
 
 const edgeTypes = {
@@ -44,12 +50,23 @@ const edgeTypes = {
 
 export default function SchemaFlow() {
   const {
-    nodes: storeNodes,
-    edges: storeEdges,
-    applyLayout,
+    // Workspace state
+    activeWorkspace,
+    // Core nodes/edges
+    nodes: coreNodes,
+    edges: coreEdges,
+    applyLayout: applyCoreLayout,
     refreshEdges,
-    isLoadingDescribe,
+    isLoadingDescribe: coreIsLoading,
     selectedObjectNames,
+    // Data Cloud nodes/edges
+    dcNodes,
+    dcEdges,
+    applyDcLayout,
+    refreshDcEdges,
+    dcIsLoadingDescribe,
+    dcSelectedEntityNames,
+    // UI state
     showLegend,
     toggleLegend,
     showSettingsDropdown,
@@ -58,6 +75,13 @@ export default function SchemaFlow() {
     toggleExportDropdown,
     badgeSettings,
   } = useAppStore();
+
+  // Get workspace-specific values
+  const storeNodes = activeWorkspace === 'core' ? coreNodes : dcNodes;
+  const storeEdges = activeWorkspace === 'core' ? coreEdges : dcEdges;
+  const applyLayout = activeWorkspace === 'core' ? applyCoreLayout : applyDcLayout;
+  const isLoadingDescribe = activeWorkspace === 'core' ? coreIsLoading : dcIsLoadingDescribe;
+  const selectedCount = activeWorkspace === 'core' ? selectedObjectNames.length : dcSelectedEntityNames.length;
 
   // Settings from badge display (controls various diagram behaviors)
   const compactMode = badgeSettings.compactMode;
@@ -70,6 +94,7 @@ export default function SchemaFlow() {
 
   // Sync nodes from store when objects are added/removed OR when node data changes
   // Preserve local positions for existing nodes (user may have dragged them)
+  // Works for both Core and Data Cloud workspaces
   useEffect(() => {
     // Use callback form to access current nodes without adding to dependencies
     setNodes(currentNodes => {
@@ -80,7 +105,8 @@ export default function SchemaFlow() {
         // Use current position if exists (preserves drag), otherwise use store position
         position: currentPositions.get(node.id) ?? node.position,
         data: {
-          ...(node.data as ObjectNodeData),
+          // Handle both ObjectNodeData and DataCloudNodeData
+          ...(node.data as ObjectNodeData | DataCloudNodeData),
           compactMode,
         },
       }));
@@ -103,7 +129,7 @@ export default function SchemaFlow() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [storeNodes, storeEdges, setNodes, setEdges, compactMode]);
+  }, [storeNodes, storeEdges, setNodes, setEdges, compactMode, activeWorkspace]);
 
   // Toggle compact mode without resetting positions
   // Also refresh edges after a delay to allow node measurements to update
@@ -112,7 +138,7 @@ export default function SchemaFlow() {
       currentNodes.map(node => ({
         ...node,
         data: {
-          ...(node.data as ObjectNodeData),
+          ...(node.data as ObjectNodeData | DataCloudNodeData),
           compactMode,
         },
       }))
@@ -141,9 +167,14 @@ export default function SchemaFlow() {
   // showSelfReferences: toggles visibility of self-referential edges (e.g., Account.ParentId → Account)
   useEffect(() => {
     if (storeNodes.length > 0) {
-      refreshEdges();
+      // Call appropriate refresh based on workspace
+      if (activeWorkspace === 'core') {
+        refreshEdges();
+      } else {
+        refreshDcEdges();
+      }
     }
-  }, [showAllConnections, showSelfReferences, refreshEdges, storeNodes.length]);
+  }, [showAllConnections, showSelfReferences, refreshEdges, refreshDcEdges, storeNodes.length, activeWorkspace]);
 
   // Fit view only when node count changes (new objects added)
   const [prevNodeCount, setPrevNodeCount] = useState(0);
@@ -172,11 +203,13 @@ export default function SchemaFlow() {
   const handleReLayout = useCallback(() => {
     applyLayout();
     // Force update nodes with new dagre positions (bypass position preservation in useEffect)
-    const newNodes = useAppStore.getState().nodes;
+    // Get the correct nodes based on active workspace
+    const state = useAppStore.getState();
+    const newNodes = state.activeWorkspace === 'core' ? state.nodes : state.dcNodes;
     setNodes(newNodes.map(node => ({
       ...node,
       data: {
-        ...(node.data as ObjectNodeData),
+        ...(node.data as ObjectNodeData | DataCloudNodeData),
         compactMode,
       },
     })));
@@ -264,13 +297,23 @@ export default function SchemaFlow() {
           </div>
         </Panel>
 
-        {/* Empty state - true center, compact size */}
+        {/* Empty state - true center, compact size, workspace-aware */}
         {nodes.length === 0 && !isLoadingDescribe && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="bg-white/95 border border-gray-200 rounded-lg px-6 py-4 text-center shadow-sm">
-              <BarChart3 className="h-8 w-8 mx-auto mb-2 text-sf-blue/70" />
-              <h3 className="m-0 mb-1 text-gray-600 text-sm font-medium">No Objects Selected</h3>
-              <p className="m-0 text-gray-400 text-xs">Select objects from the sidebar</p>
+              {activeWorkspace === 'core' ? (
+                <>
+                  <BarChart3 className="h-8 w-8 mx-auto mb-2 text-sf-blue/70" />
+                  <h3 className="m-0 mb-1 text-gray-600 text-sm font-medium">No Objects Selected</h3>
+                  <p className="m-0 text-gray-400 text-xs">Select objects from the sidebar</p>
+                </>
+              ) : (
+                <>
+                  <Cloud className="h-8 w-8 mx-auto mb-2 text-purple-500/70" />
+                  <h3 className="m-0 mb-1 text-gray-600 text-sm font-medium">No Entities Selected</h3>
+                  <p className="m-0 text-gray-400 text-xs">Select Data Cloud entities from the sidebar</p>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -280,12 +323,12 @@ export default function SchemaFlow() {
           <Panel position="top-center" className="pointer-events-none">
             <div className="bg-white border border-gray-300 rounded-sm px-6 py-3 flex items-center gap-3 shadow-sm text-sm text-sf-text">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading schema...</span>
+              <span>{activeWorkspace === 'core' ? 'Loading schema...' : 'Loading entities...'}</span>
             </div>
           </Panel>
         )}
 
-        {/* Legend with toggle */}
+        {/* Legend with toggle - workspace-aware content */}
         <Panel position="bottom-right" data-export-legend>
           {showLegend ? (
             <div className="bg-white border border-gray-200 rounded-sm shadow-md overflow-hidden min-w-[180px]">
@@ -302,74 +345,134 @@ export default function SchemaFlow() {
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
-              {/* Legend content */}
-              <div className="px-3 py-2.5 space-y-3">
-                {/* Relationship lines */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <span
-                      className="w-6 h-0.5 flex-shrink-0"
-                      style={{
-                        background: 'repeating-linear-gradient(90deg, #0176D3 0px, #0176D3 4px, transparent 4px, transparent 8px)',
-                      }}
-                    />
-                    <span>Lookup Relationship</span>
+              {/* Legend content - workspace-aware */}
+              {activeWorkspace === 'core' ? (
+                /* Core Schema Legend */
+                <div className="px-3 py-2.5 space-y-3">
+                  {/* Relationship lines */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                      <span
+                        className="w-6 h-0.5 flex-shrink-0"
+                        style={{
+                          background: 'repeating-linear-gradient(90deg, #0176D3 0px, #0176D3 4px, transparent 4px, transparent 8px)',
+                        }}
+                      />
+                      <span>Lookup Relationship</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                      <span
+                        className="w-6 h-0.5 flex-shrink-0"
+                        style={{
+                          background: 'repeating-linear-gradient(90deg, #DC2626 0px, #DC2626 4px, transparent 4px, transparent 8px)',
+                        }}
+                      />
+                      <span>Master-Detail Relationship</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-sf-text">
-                    <span
-                      className="w-6 h-0.5 flex-shrink-0"
-                      style={{
-                        background: 'repeating-linear-gradient(90deg, #DC2626 0px, #DC2626 4px, transparent 4px, transparent 8px)',
-                      }}
-                    />
-                    <span>Master-Detail Relationship</span>
-                  </div>
-                </div>
 
-                {/* Primary object types */}
-                <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
-                  <div className="flex justify-center">
-                    <Badge variant="standard" className="min-w-[130px] justify-center">Standard Objects</Badge>
+                  {/* Primary object types */}
+                  <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
+                    <div className="flex justify-center">
+                      <Badge variant="standard" className="min-w-[130px] justify-center">Standard Objects</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="custom" className="min-w-[130px] justify-center">Custom Objects</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="namespace" className="min-w-[130px] justify-center">Managed Package</Badge>
+                    </div>
                   </div>
-                  <div className="flex justify-center">
-                    <Badge variant="custom" className="min-w-[130px] justify-center">Custom Objects</Badge>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge variant="namespace" className="min-w-[130px] justify-center">Managed Package</Badge>
-                  </div>
-                </div>
 
-                {/* System object types */}
-                <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
-                  <div className="flex justify-center">
-                    <Badge variant="feed" className="min-w-[130px] justify-center">Feed Objects</Badge>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge variant="share" className="min-w-[130px] justify-center">Share Objects</Badge>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge variant="history" className="min-w-[130px] justify-center">History Objects</Badge>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge variant="changeEvent" className="min-w-[130px] justify-center">Change Events</Badge>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge variant="platformEvent" className="min-w-[130px] justify-center">Platform Events</Badge>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge variant="externalObject" className="min-w-[130px] justify-center">External Objects</Badge>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge variant="customMetadata" className="min-w-[130px] justify-center">Custom Metadata</Badge>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge variant="bigObject" className="min-w-[130px] justify-center">Big Objects</Badge>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge variant="tag" className="min-w-[130px] justify-center">Tag Objects</Badge>
+                  {/* System object types */}
+                  <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
+                    <div className="flex justify-center">
+                      <Badge variant="feed" className="min-w-[130px] justify-center">Feed Objects</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="share" className="min-w-[130px] justify-center">Share Objects</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="history" className="min-w-[130px] justify-center">History Objects</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="changeEvent" className="min-w-[130px] justify-center">Change Events</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="platformEvent" className="min-w-[130px] justify-center">Platform Events</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="externalObject" className="min-w-[130px] justify-center">External Objects</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="customMetadata" className="min-w-[130px] justify-center">Custom Metadata</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="bigObject" className="min-w-[130px] justify-center">Big Objects</Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="tag" className="min-w-[130px] justify-center">Tag Objects</Badge>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                /* Data Cloud Legend */
+                <div className="px-3 py-2.5 space-y-3">
+                  {/* Relationship lines */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2.5 text-xs text-sf-text">
+                      <span
+                        className="w-6 h-0.5 flex-shrink-0"
+                        style={{
+                          background: 'repeating-linear-gradient(90deg, #0176D3 0px, #0176D3 4px, transparent 4px, transparent 8px)',
+                        }}
+                      />
+                      <span>Foreign Key Relationship</span>
+                    </div>
+                  </div>
+
+                  {/* Entity types */}
+                  <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
+                    <div className="flex justify-center">
+                      <Badge className="min-w-[130px] justify-center bg-purple-100 text-purple-700 border-purple-200">
+                        Data Model Object
+                      </Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge className="min-w-[130px] justify-center bg-teal-100 text-teal-700 border-teal-200">
+                        Data Lake Object
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* DMO Categories */}
+                  <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
+                    <div className="text-[10px] text-sf-text-muted uppercase tracking-wide font-semibold mb-1.5">
+                      DMO Categories
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge className="min-w-[130px] justify-center bg-blue-100 text-blue-700 border-blue-200">
+                        Profile
+                      </Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge className="min-w-[130px] justify-center bg-orange-100 text-orange-700 border-orange-200">
+                        Engagement
+                      </Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge className="min-w-[130px] justify-center bg-green-100 text-green-700 border-green-200">
+                        Related
+                      </Badge>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge className="min-w-[130px] justify-center bg-gray-100 text-gray-700 border-gray-200">
+                        Other
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <button
@@ -383,10 +486,12 @@ export default function SchemaFlow() {
           )}
         </Panel>
 
-        {/* Stats */}
+        {/* Stats - workspace-aware */}
         <Panel position="top-left" className="mt-[120px]">
           <div className="bg-white border border-gray-300 rounded-sm px-3.5 py-2 text-sm text-sf-text-muted flex gap-2.5 shadow-sm font-medium">
-            <span>{selectedObjectNames.length} objects</span>
+            <span>
+              {selectedCount} {activeWorkspace === 'core' ? 'objects' : 'entities'}
+            </span>
             <span>•</span>
             <span>{edges.length} relationships</span>
           </div>
